@@ -16,9 +16,26 @@
         "type": "github"
       }
     },
+    "nixpkgs-amarbel": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1777642091,
+        "narHash": "sha256-zgNLPnbbRZbAQt8uqfo0S2HNr5SXkpINWMv51Vngvzg=",
+        "owner": "amarbel-llc",
+        "repo": "nixpkgs",
+        "rev": "ba254c01b25510e63be40e5ed7f65f59eccf020f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "amarbel-llc",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "nixpkgs": "nixpkgs",
+        "nixpkgs-amarbel": "nixpkgs-amarbel",
         "utils": "utils"
       }
     },

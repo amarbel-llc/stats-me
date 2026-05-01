@@ -4,10 +4,19 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     utils.url = "https://flakehub.com/f/numtide/flake-utils/0.1.102";
+    # amarbel-llc/nixpkgs is a flake-as-source-tree input — we want
+    # the bun2nix build-support helpers (specifically
+    # buildZxScriptFromFile) for packaging cli/stats-me-query.ts.
+    # We do NOT apply its overlay; instead we callPackage the helper
+    # directly. flake = false because we just need the source files.
+    nixpkgs-amarbel = {
+      url = "github:amarbel-llc/nixpkgs";
+      flake = false;
+    };
   };
 
   outputs =
-    { self, nixpkgs, utils }:
+    { self, nixpkgs, nixpkgs-amarbel, utils }:
     let
       # Home-manager modules are system-independent and exported at
       # the top level so consumers can wire
@@ -33,6 +42,19 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
+
+        # bun2nix helpers from amarbel-llc/nixpkgs, hand-wired without
+        # the overlay. We callPackage the build-support paths
+        # directly so the rest of pkgs stays untouched.
+        cacheEntryCreator = pkgs.callPackage
+          "${nixpkgs-amarbel}/pkgs/build-support/bun2nix/cache-entry-creator"
+          { };
+        bun2nix = pkgs.callPackage
+          "${nixpkgs-amarbel}/pkgs/build-support/bun2nix"
+          {
+            inherit cacheEntryCreator;
+            bun = bun-pinned;
+          };
 
         # Bun pinned to an upstream release. nixos-25.11 ships
         # bun-1.3.3, which silently drops the first UDP packet after
@@ -80,16 +102,32 @@
         stats-me = pkgs.callPackage ./default.nix {
           bun = bun-pinned;
         };
+
+        # Bun-runtime zx script wrapping VM's HTTP query endpoints.
+        # Default VM URL is http://127.0.0.1:8428 — same as VM's
+        # default httpListenAddr — but $STATS_ME_VM_URL or
+        # --vm-url=URL override that. The HM module sets
+        # STATS_ME_VM_URL automatically when stats-me-vm is enabled
+        # and autowired (TODO: actually do this in stats-me.nix).
+        stats-me-query = bun2nix.buildZxScriptFromFile {
+          pname = "stats-me-query";
+          version = "0.1.0";
+          script = ./cli/stats-me-query.ts;
+        };
       in
       {
         packages = {
           default = stats-me;
           stats-me = stats-me;
+          stats-me-query = stats-me-query;
           bun = bun-pinned;
         };
 
         devShells.default = pkgs.mkShell {
-          packages = [ bun-pinned ];
+          packages = [
+            bun-pinned
+            stats-me-query
+          ];
         };
 
         # Smoke-build check: ensures the package and its bun
@@ -97,6 +135,7 @@
         # validated separately by `nix flake check` consumers.
         checks = {
           stats-me = stats-me;
+          stats-me-query = stats-me-query;
         };
       }
     );
