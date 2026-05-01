@@ -1,0 +1,92 @@
+{
+  description = "stats-me: personal statsd as a home-manager module, run under Bun";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    utils.url = "https://flakehub.com/f/numtide/flake-utils/0.1.102";
+  };
+
+  outputs =
+    { self, nixpkgs, utils }:
+    let
+      # The home-manager module is system-independent and exported at
+      # the top level so consumers can wire
+      # `inputs.stats-me.homeManagerModules.stats-me` directly. Same
+      # shape as amarbel-llc/piggy's flake.
+      homeManagerModules.stats-me = import ./nix/hm/stats-me.nix;
+    in
+    {
+      inherit homeManagerModules;
+    }
+    // utils.lib.eachDefaultSystem (
+      system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+
+        # Bun pinned to an upstream release. nixos-25.11 ships
+        # bun-1.3.3, which silently drops the first UDP packet after
+        # `bind()` on darwin (oven-sh/bun#28083 area). 1.3.11 is the
+        # first release with the relevant macOS dgram fixes; 1.3.12
+        # has a separate Linux regression (#29116). Pin to 1.3.11
+        # explicitly until nixpkgs catches up.
+        bunPlatform =
+          {
+            "aarch64-darwin" = "darwin-aarch64";
+            "x86_64-darwin" = "darwin-x64";
+            "aarch64-linux" = "linux-aarch64";
+            "x86_64-linux" = "linux-x64";
+          }
+          .${system}
+            or (throw "stats-me bun pin: unsupported system ${system}");
+
+        bun-pinned = pkgs.stdenvNoCC.mkDerivation rec {
+          pname = "bun";
+          version = "1.3.11";
+          src = pkgs.fetchurl {
+            url = "https://github.com/oven-sh/bun/releases/download/bun-v${version}/bun-${bunPlatform}.zip";
+            # Per-platform FOD hash. Add a branch when porting to
+            # another system; nix prints the right hash on first
+            # build.
+            hash =
+              {
+                "aarch64-darwin" = "sha256-b1o0Z+2crsR5W/eM1HZQfZ+HDH1XuGyUX8szgSZ3L/w=";
+              }
+              .${system}
+                or (throw "stats-me bun pin: hash for ${system} not pinned yet");
+          };
+          nativeBuildInputs = [ pkgs.unzip ];
+          dontBuild = true;
+          dontPatchELF = true;
+          installPhase = ''
+            runHook preInstall
+            mkdir -p $out/bin
+            install -m 0755 bun $out/bin/bun
+            ln -s bun $out/bin/bunx
+            runHook postInstall
+          '';
+        };
+
+        stats-me = pkgs.callPackage ./default.nix {
+          bun = bun-pinned;
+        };
+      in
+      {
+        packages = {
+          default = stats-me;
+          stats-me = stats-me;
+          bun = bun-pinned;
+        };
+
+        devShells.default = pkgs.mkShell {
+          packages = [ bun-pinned ];
+        };
+
+        # Smoke-build check: ensures the package and its bun
+        # dependency continue to build. The HM module's eval is
+        # validated separately by `nix flake check` consumers.
+        checks = {
+          stats-me = stats-me;
+        };
+      }
+    );
+}
