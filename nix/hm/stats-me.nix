@@ -23,29 +23,30 @@ let
 
   cfg = config.services.stats-me;
 
-  # Carbon autowire: when the user imports nix/hm/carbon.nix and turns
-  # on services.stats-me-carbon, route stats-me's graphite backend at
-  # carbon's host:port automatically. The defensive
-  # `(config.services ? stats-me-carbon)` guard means stats-me still
-  # evaluates standalone (when only this module is imported) — we
-  # only auto-route if the carbon module surface is actually present.
-  carbonAutowireEnabled =
-    cfg.autowireCarbon
-    && (config.services ? stats-me-carbon)
-    && config.services.stats-me-carbon.enable;
+  # VictoriaMetrics autowire: when the user imports
+  # nix/hm/victoriametrics.nix and turns on services.stats-me-vm,
+  # route stats-me's graphite backend at VM's host:port automatically.
+  # The defensive `(config.services ? stats-me-vm)` guard means
+  # stats-me still evaluates standalone (when only this module is
+  # imported) — we only auto-route if the VM module surface is
+  # actually present.
+  vmAutowireEnabled =
+    cfg.autowireVictoriaMetrics
+    && (config.services ? stats-me-vm)
+    && config.services.stats-me-vm.enable;
 
-  carbonHost = if carbonAutowireEnabled then config.services.stats-me-carbon.host else null;
-  carbonPort = if carbonAutowireEnabled then config.services.stats-me-carbon.port else null;
+  vmGraphiteHost = if vmAutowireEnabled then config.services.stats-me-vm.host else null;
+  vmGraphitePort = if vmAutowireEnabled then config.services.stats-me-vm.graphitePort else null;
 
   # Effective backend list: console always; graphite added when we're
-  # autowiring carbon AND the user hasn't already opted in via
+  # autowiring VM AND the user hasn't already opted in via
   # `cfg.backends`. The string check matches statsd's lookup — its
   # backends list is paths relative to the statsd dir.
   effectiveBackends =
     let
       hasGraphite = builtins.any (b: b == "./backends/graphite" || b == "./backends/graphite.js") cfg.backends;
     in
-    if carbonAutowireEnabled && !hasGraphite then cfg.backends ++ [ "./backends/graphite" ] else cfg.backends;
+    if vmAutowireEnabled && !hasGraphite then cfg.backends ++ [ "./backends/graphite" ] else cfg.backends;
 
   # Build the JS config blob. statsd's lib/config.js evals the file as
   # `config = <data>`, so the file body must be a bare JS expression.
@@ -54,9 +55,9 @@ let
   # cleanly.
   generatedConfig =
     let
-      autowired = lib.optionalAttrs carbonAutowireEnabled {
-        graphiteHost = carbonHost;
-        graphitePort = carbonPort;
+      autowired = lib.optionalAttrs vmAutowireEnabled {
+        graphiteHost = vmGraphiteHost;
+        graphitePort = vmGraphitePort;
       };
       merged =
         {
@@ -138,26 +139,27 @@ in
       '';
     };
 
-    autowireCarbon = mkOption {
+    autowireVictoriaMetrics = mkOption {
       type = types.bool;
       default = true;
       description = ''
-        When `true` (default) and `services.stats-me-carbon.enable`
-        is also `true`, stats-me automatically:
+        When `true` (default) and `services.stats-me-vm.enable` is
+        also `true`, stats-me automatically:
 
           1. Adds `./backends/graphite` to {option}`backends` (if it
              isn't already there).
           2. Sets `graphiteHost` / `graphitePort` in the generated
-             config to point at the carbon daemon's host:port.
+             config to point at the VM daemon's graphite-listener
+             host:port.
 
         Set to `false` to wire the graphite backend manually via
         {option}`backends` and {option}`extraConfig`. The autowire
         loses to anything in {option}`extraConfig`, so explicit
         overrides always win.
 
-        No effect if `services.stats-me-carbon` is not enabled or
-        the carbon module is not imported at all — stats-me still
-        works standalone with the console backend.
+        No effect if `services.stats-me-vm` is not enabled or the
+        VM module is not imported at all — stats-me still works
+        standalone with the console backend.
       '';
     };
 

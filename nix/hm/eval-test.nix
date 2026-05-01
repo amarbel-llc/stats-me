@@ -1,5 +1,5 @@
-# Synthetic eval test for the stats-me HM module. Instantiates the
-# module against a minimal home-manager-shaped config and confirms the
+# Synthetic eval test for the stats-me HM modules. Instantiates the
+# modules against a minimal home-manager-shaped config and confirms the
 # expected attributes land where the README claims they do.
 #
 # Run via:
@@ -12,10 +12,10 @@
 
 let
   module = import ./stats-me.nix;
-  carbonModule = import ./carbon.nix;
+  vmModule = import ./victoriametrics.nix;
 
   # Minimal HM-ish stubs: just enough launchd / systemd options for
-  # the module to evaluate. evalModules rejects mixing `options`,
+  # the modules to evaluate. evalModules rejects mixing `options`,
   # `config._module`, and user config in a single anonymous module —
   # split them into three.
   stubOptions = {
@@ -44,24 +44,24 @@ let
       ];
     };
 
-  evalConfigWithCarbon =
+  evalConfigWithVm =
     extraConfig:
     lib.evalModules {
       modules = [
         stubOptions
         argsModule
         module
-        carbonModule
+        vmModule
         extraConfig
       ];
     };
 
-  carbonEnabled =
-    (evalConfigWithCarbon {
+  vmEnabled =
+    (evalConfigWithVm {
       services.stats-me.enable = true;
       services.stats-me.package = pkgs.hello;
-      services.stats-me-carbon.enable = true;
-      services.stats-me-carbon.package = pkgs.hello;
+      services.stats-me-vm.enable = true;
+      services.stats-me-vm.package = pkgs.hello;
     }).config;
 
   enabledDarwin =
@@ -97,9 +97,8 @@ in
     enabledDarwin.services.stats-me.enable
     && (pkgs.stdenv.isDarwin -> (enabledDarwin.launchd.agents ? stats-me))
     && enabledWithExtra.services.stats-me.extraConfig.graphitePort == 2003
-    && carbonEnabled.services.stats-me-carbon.enable
-    && (pkgs.stdenv.isDarwin -> (carbonEnabled.launchd.agents ? stats-me-carbon))
-    && carbonEnabled.services.stats-me-carbon.port == 2003;
+    && vmEnabled.services.stats-me-vm.enable
+    && (pkgs.stdenv.isDarwin -> (vmEnabled.launchd.agents ? stats-me-vm));
 
   # Expose the launcher script path so verification can dump its
   # contents and confirm the XDG_LOG_HOME shape. The mkIf wrapper
@@ -111,20 +110,20 @@ in
     in
     builtins.head body.config.ProgramArguments;
 
-  # Same idea, but for the carbon launcher.
-  carbonLauncher =
+  # Same idea, but for the VM launcher.
+  vmLauncher =
     let
-      agent = carbonEnabled.launchd.agents.stats-me-carbon;
+      agent = vmEnabled.launchd.agents.stats-me-vm;
       body = if agent ? content then agent.content else agent;
     in
     builtins.head body.config.ProgramArguments;
 
   # The autowired stats-me launcher under the both-enabled scenario.
   # Used by verification to confirm the generated config.js inside
-  # the launcher contains `graphiteHost` pointing at carbon.
+  # the launcher contains `graphiteHost` pointing at VM.
   autowiredStatsMeLauncher =
     let
-      agent = carbonEnabled.launchd.agents.stats-me;
+      agent = vmEnabled.launchd.agents.stats-me;
       body = if agent ? content then agent.content else agent;
     in
     builtins.head body.config.ProgramArguments;

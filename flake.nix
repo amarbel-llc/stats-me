@@ -16,14 +16,14 @@
       #
       # Two modules live here:
       #   - stats-me: the statsd daemon (always usable on its own)
-      #   - stats-me-carbon: optional carbon-cache for persistent
-      #     storage. Disabled by default. When enabled, stats-me
-      #     auto-routes its graphite backend at carbon's address —
-      #     see services.stats-me.carbon-autowire option (next
-      #     commit) for the wiring rule.
+      #   - stats-me-vm: optional VictoriaMetrics for persistent
+      #     time-series storage. Disabled by default. When enabled,
+      #     stats-me auto-routes its graphite backend at VM's
+      #     graphite-listener address — see autowireVictoriaMetrics
+      #     option in stats-me.nix for the wiring rule.
       homeManagerModules = {
         stats-me = import ./nix/hm/stats-me.nix;
-        stats-me-carbon = import ./nix/hm/carbon.nix;
+        stats-me-vm = import ./nix/hm/victoriametrics.nix;
       };
     in
     {
