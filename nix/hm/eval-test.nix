@@ -110,4 +110,22 @@ in
       body = if agent ? content then agent.content else agent;
     in
     builtins.head body.config.ProgramArguments;
+
+  # Same idea, but for the carbon launcher.
+  carbonLauncher =
+    let
+      agent = carbonEnabled.launchd.agents.stats-me-carbon;
+      body = if agent ? content then agent.content else agent;
+    in
+    builtins.head body.config.ProgramArguments;
+
+  # The autowired stats-me launcher under the both-enabled scenario.
+  # Used by verification to confirm the generated config.js inside
+  # the launcher contains `graphiteHost` pointing at carbon.
+  autowiredStatsMeLauncher =
+    let
+      agent = carbonEnabled.launchd.agents.stats-me;
+      body = if agent ? content then agent.content else agent;
+    in
+    builtins.head body.config.ProgramArguments;
 }

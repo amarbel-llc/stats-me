@@ -23,6 +23,30 @@ let
 
   cfg = config.services.stats-me;
 
+  # Carbon autowire: when the user imports nix/hm/carbon.nix and turns
+  # on services.stats-me-carbon, route stats-me's graphite backend at
+  # carbon's host:port automatically. The defensive
+  # `(config.services ? stats-me-carbon)` guard means stats-me still
+  # evaluates standalone (when only this module is imported) — we
+  # only auto-route if the carbon module surface is actually present.
+  carbonAutowireEnabled =
+    cfg.autowireCarbon
+    && (config.services ? stats-me-carbon)
+    && config.services.stats-me-carbon.enable;
+
+  carbonHost = if carbonAutowireEnabled then config.services.stats-me-carbon.host else null;
+  carbonPort = if carbonAutowireEnabled then config.services.stats-me-carbon.port else null;
+
+  # Effective backend list: console always; graphite added when we're
+  # autowiring carbon AND the user hasn't already opted in via
+  # `cfg.backends`. The string check matches statsd's lookup — its
+  # backends list is paths relative to the statsd dir.
+  effectiveBackends =
+    let
+      hasGraphite = builtins.any (b: b == "./backends/graphite" || b == "./backends/graphite.js") cfg.backends;
+    in
+    if carbonAutowireEnabled && !hasGraphite then cfg.backends ++ [ "./backends/graphite" ] else cfg.backends;
+
   # Build the JS config blob. statsd's lib/config.js evals the file as
   # `config = <data>`, so the file body must be a bare JS expression.
   # Use `builtins.toJSON` for the merged object — JSON is a subset of
@@ -30,13 +54,18 @@ let
   # cleanly.
   generatedConfig =
     let
+      autowired = lib.optionalAttrs carbonAutowireEnabled {
+        graphiteHost = carbonHost;
+        graphitePort = carbonPort;
+      };
       merged =
         {
           port = cfg.port;
           flushInterval = cfg.flushInterval;
-          backends = cfg.backends;
+          backends = effectiveBackends;
         }
-        // cfg.extraConfig;
+        // autowired
+        // cfg.extraConfig;  # explicit user values still win
     in
     pkgs.writeText "stats-me-config.js" (builtins.toJSON merged);
 
@@ -106,6 +135,29 @@ in
       description = ''
         Flush interval in milliseconds. Each flush triggers the
         configured backends (default: console).
+      '';
+    };
+
+    autowireCarbon = mkOption {
+      type = types.bool;
+      default = true;
+      description = ''
+        When `true` (default) and `services.stats-me-carbon.enable`
+        is also `true`, stats-me automatically:
+
+          1. Adds `./backends/graphite` to {option}`backends` (if it
+             isn't already there).
+          2. Sets `graphiteHost` / `graphitePort` in the generated
+             config to point at the carbon daemon's host:port.
+
+        Set to `false` to wire the graphite backend manually via
+        {option}`backends` and {option}`extraConfig`. The autowire
+        loses to anything in {option}`extraConfig`, so explicit
+        overrides always win.
+
+        No effect if `services.stats-me-carbon` is not enabled or
+        the carbon module is not imported at all — stats-me still
+        works standalone with the console backend.
       '';
     };
 
