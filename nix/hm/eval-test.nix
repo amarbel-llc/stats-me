@@ -12,6 +12,7 @@
 
 let
   module = import ./stats-me.nix;
+  carbonModule = import ./carbon.nix;
 
   # Minimal HM-ish stubs: just enough launchd / systemd options for
   # the module to evaluate. evalModules rejects mixing `options`,
@@ -42,6 +43,26 @@ let
         extraConfig
       ];
     };
+
+  evalConfigWithCarbon =
+    extraConfig:
+    lib.evalModules {
+      modules = [
+        stubOptions
+        argsModule
+        module
+        carbonModule
+        extraConfig
+      ];
+    };
+
+  carbonEnabled =
+    (evalConfigWithCarbon {
+      services.stats-me.enable = true;
+      services.stats-me.package = pkgs.hello;
+      services.stats-me-carbon.enable = true;
+      services.stats-me-carbon.package = pkgs.hello;
+    }).config;
 
   enabledDarwin =
     (evalConfig {
@@ -75,7 +96,10 @@ in
   pass =
     enabledDarwin.services.stats-me.enable
     && (pkgs.stdenv.isDarwin -> (enabledDarwin.launchd.agents ? stats-me))
-    && enabledWithExtra.services.stats-me.extraConfig.graphitePort == 2003;
+    && enabledWithExtra.services.stats-me.extraConfig.graphitePort == 2003
+    && carbonEnabled.services.stats-me-carbon.enable
+    && (pkgs.stdenv.isDarwin -> (carbonEnabled.launchd.agents ? stats-me-carbon))
+    && carbonEnabled.services.stats-me-carbon.port == 2003;
 
   # Expose the launcher script path so verification can dump its
   # contents and confirm the XDG_LOG_HOME shape. The mkIf wrapper

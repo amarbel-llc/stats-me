@@ -9,11 +9,22 @@
   outputs =
     { self, nixpkgs, utils }:
     let
-      # The home-manager module is system-independent and exported at
+      # Home-manager modules are system-independent and exported at
       # the top level so consumers can wire
       # `inputs.stats-me.homeManagerModules.stats-me` directly. Same
       # shape as amarbel-llc/piggy's flake.
-      homeManagerModules.stats-me = import ./nix/hm/stats-me.nix;
+      #
+      # Two modules live here:
+      #   - stats-me: the statsd daemon (always usable on its own)
+      #   - stats-me-carbon: optional carbon-cache for persistent
+      #     storage. Disabled by default. When enabled, stats-me
+      #     auto-routes its graphite backend at carbon's address —
+      #     see services.stats-me.carbon-autowire option (next
+      #     commit) for the wiring rule.
+      homeManagerModules = {
+        stats-me = import ./nix/hm/stats-me.nix;
+        stats-me-carbon = import ./nix/hm/carbon.nix;
+      };
     in
     {
       inherit homeManagerModules;
