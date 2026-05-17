@@ -19,11 +19,11 @@
     "nixpkgs-amarbel": {
       "flake": false,
       "locked": {
-        "lastModified": 1779022451,
-        "narHash": "sha256-+Rhyk1XAkeNaMzqvt1yoP0rPMoPlYzH5oLbs2D0nGrk=",
+        "lastModified": 1779025301,
+        "narHash": "sha256-BwGy0RAluJl13h8FczQofFdrh1IsZYjb1A8q1UCXgQ4=",
         "owner": "amarbel-llc",
         "repo": "nixpkgs",
-        "rev": "51fba01bbe7ea3850939bd93541895d23c7ccced",
+        "rev": "5599ee349b879b3809939e16e06865c6ee2dc14a",
         "type": "github"
       },
       "original": {
