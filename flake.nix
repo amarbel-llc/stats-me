@@ -62,42 +62,30 @@
         # first release with the relevant macOS dgram fixes; 1.3.12
         # has a separate Linux regression (#29116). Pin to 1.3.11
         # explicitly until nixpkgs catches up.
-        bunPlatform =
-          {
-            "aarch64-darwin" = "darwin-aarch64";
-            "x86_64-darwin" = "darwin-x64";
-            "aarch64-linux" = "linux-aarch64";
-            "x86_64-linux" = "linux-x64";
-          }
-          .${system}
-            or (throw "stats-me bun pin: unsupported system ${system}");
-
-        bun-pinned = pkgs.stdenvNoCC.mkDerivation rec {
-          pname = "bun";
+        #
+        # We override pkgs.bun rather than hand-rolling the
+        # derivation: nixpkgs's bun handles autoPatchelfHook on
+        # Linux, codesigning on Darwin, and shell completions. We
+        # only swap version + per-platform sources. 25.11's bun
+        # uses `rec` scope (not `finalAttrs`), so src must be
+        # re-bound explicitly to pick up the new sources map.
+        bun-pinned = pkgs.bun.overrideAttrs (old: rec {
           version = "1.3.11";
-          src = pkgs.fetchurl {
-            url = "https://github.com/oven-sh/bun/releases/download/bun-v${version}/bun-${bunPlatform}.zip";
-            # Per-platform FOD hash. Add a branch when porting to
-            # another system; nix prints the right hash on first
-            # build.
-            hash =
-              {
-                "aarch64-darwin" = "sha256-b1o0Z+2crsR5W/eM1HZQfZ+HDH1XuGyUX8szgSZ3L/w=";
-              }
-              .${system}
-                or (throw "stats-me bun pin: hash for ${system} not pinned yet");
+          passthru = old.passthru // {
+            sources = {
+              "aarch64-darwin" = pkgs.fetchurl {
+                url = "https://github.com/oven-sh/bun/releases/download/bun-v${version}/bun-darwin-aarch64.zip";
+                hash = "sha256-b1o0Z+2crsR5W/eM1HZQfZ+HDH1XuGyUX8szgSZ3L/w=";
+              };
+              "x86_64-linux" = pkgs.fetchurl {
+                url = "https://github.com/oven-sh/bun/releases/download/bun-v${version}/bun-linux-x64.zip";
+                hash = "sha256-hhG6k1r4hvBabzh0ChUWAybBXl1dB63vlmEwtEk2B+0=";
+              };
+            };
           };
-          nativeBuildInputs = [ pkgs.unzip ];
-          dontBuild = true;
-          dontPatchELF = true;
-          installPhase = ''
-            runHook preInstall
-            mkdir -p $out/bin
-            install -m 0755 bun $out/bin/bun
-            ln -s bun $out/bin/bunx
-            runHook postInstall
-          '';
-        };
+          src = passthru.sources.${system}
+            or (throw "stats-me bun pin: unsupported system ${system}");
+        });
 
         stats-me = pkgs.callPackage ./default.nix {
           bun = bun-pinned;
