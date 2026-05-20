@@ -9,7 +9,7 @@
 # console-backend log.
 #
 # Like services.stats-me-carbon used to, this module ships its own
-# service name (stats-me-victoria-metrics) so users who want VM
+# service name (stats-me-victoria-metrics) so users who want VictoriaMetrics
 # standalone can opt in without dragging stats-me along. The wiring
 # between them lives in stats-me.nix's autowireVictoriaMetrics option.
 {
@@ -33,10 +33,10 @@ let
   # Resolve runtime paths in the launcher script. systemd's
   # ExecStart and launchd's ProgramArguments don't expand env vars,
   # so we own resolution in bash. Same pattern as stats-me.nix.
-  defaultDataDirExpr = "\${XDG_DATA_HOME:-$HOME/.local/share}/stats-me/vm";
+  defaultDataDirExpr = "\${XDG_DATA_HOME:-$HOME/.local/share}/stats-me/victoria-metrics";
   dataDirExpr = if cfg.dataDir != null then cfg.dataDir else defaultDataDirExpr;
 
-  defaultLogPathExpr = "\${XDG_LOG_HOME:-$HOME/.local/log}/stats-me/vm.log";
+  defaultLogPathExpr = "\${XDG_LOG_HOME:-$HOME/.local/log}/stats-me/victoria-metrics.log";
   logPathExpr = if cfg.logFile != null then cfg.logFile else defaultLogPathExpr;
 
   graphiteAddr = "${cfg.host}:${toString cfg.graphitePort}";
@@ -117,7 +117,7 @@ in
       description = ''
         Port for the HTTP query endpoint. PromQL via
         `GET /api/v1/query`, Prometheus exposition at
-        `/metrics`, etc. Default 8428 matches VM's documented
+        `/metrics`, etc. Default 8428 matches VictoriaMetrics's documented
         default.
       '';
     };
@@ -127,10 +127,10 @@ in
       default = "30d";
       example = "1y";
       description = ''
-        How long to retain ingested data. VM accepts `s` / `h` /
+        How long to retain ingested data. VictoriaMetrics accepts `s` / `h` /
         `d` / `w` / `M` / `y` suffixes. Default `30d` is a sensible
-        personal-stats default. VM's minimum is `24h`. Unlike
-        Whisper, VM does NOT lock retention at creation — you can
+        personal-stats default. VictoriaMetrics's minimum is `24h`.
+        Unlike Whisper, VictoriaMetrics does NOT lock retention at creation — you can
         change this at any time and the next compaction picks it up.
       '';
     };
@@ -138,10 +138,10 @@ in
     dataDir = mkOption {
       type = types.nullOr types.str;
       default = null;
-      defaultText = lib.literalExpression ''"$XDG_DATA_HOME/stats-me/vm"'';
+      defaultText = lib.literalExpression ''"$XDG_DATA_HOME/stats-me/victoria-metrics"'';
       description = ''
-        Directory for VM's storage data. When `null`, the launcher
-        uses `$XDG_DATA_HOME/stats-me/vm`. When set explicitly,
+        Directory for VictoriaMetrics's storage data. When `null`, the launcher
+        uses `$XDG_DATA_HOME/stats-me/victoria-metrics`. When set explicitly,
         the value is used verbatim — environment variables are NOT
         expanded, so pass an absolute path.
       '';
@@ -150,9 +150,9 @@ in
     logFile = mkOption {
       type = types.nullOr types.str;
       default = null;
-      defaultText = lib.literalExpression ''"$XDG_LOG_HOME/stats-me/vm.log"'';
+      defaultText = lib.literalExpression ''"$XDG_LOG_HOME/stats-me/victoria-metrics.log"'';
       description = ''
-        Log file path. Defaults to `$XDG_LOG_HOME/stats-me/vm.log`
+        Log file path. Defaults to `$XDG_LOG_HOME/stats-me/victoria-metrics.log`
         with the spec'd `$HOME/.local/log` fallback.
       '';
     };
@@ -163,7 +163,7 @@ in
       example = [ "-search.maxQueryLen=32KB" ];
       description = ''
         Extra command-line flags passed verbatim to victoria-metrics.
-        Use this for any of VM's hundreds of options not covered by
+        Use this for any of VictoriaMetrics's hundreds of options not covered by
         the typed surface above. Run `victoria-metrics -help` to
         see what's available.
       '';

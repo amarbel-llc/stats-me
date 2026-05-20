@@ -32,7 +32,8 @@
       #   - stats-me: the statsd daemon (always usable on its own)
       #   - stats-me-victoria-metrics: optional VictoriaMetrics for
       #     persistent time-series storage. Disabled by default. When
-      #     enabled, stats-me auto-routes its graphite backend at VM's
+      #     enabled, stats-me auto-routes its graphite backend at
+      #     VictoriaMetrics's
       #     graphite-listener address — see autowireVictoriaMetrics
       #     option in stats-me.nix for the wiring rule.
       homeManagerModules = {
@@ -104,9 +105,10 @@
           bun = bun-pinned;
         };
 
-        # Bun-runtime zx script wrapping VM's HTTP query endpoints.
-        # Default VM URL is http://127.0.0.1:8428 — same as VM's
-        # default httpListenAddr — but $STATS_ME_VICTORIA_METRICS_URL
+        # Bun-runtime zx script wrapping VictoriaMetrics's HTTP query
+        # endpoints. Default URL is http://127.0.0.1:8428 — same as
+        # VictoriaMetrics's default httpListenAddr — but
+        # $STATS_ME_VICTORIA_METRICS_URL
         # or --victoria-metrics-url=URL override that. The HM module
         # sets STATS_ME_VICTORIA_METRICS_URL automatically when
         # stats-me-victoria-metrics is enabled and autowired.

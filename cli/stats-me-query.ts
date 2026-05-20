@@ -1,7 +1,9 @@
 ///!dep zx@8.8.5 sha512-SNgDF5L0gfN7FwVOdEFguY3orU5AkfFZm9B5YSHog/UDHv+lvmd82ZAsOenOkQixigwH2+yyH198AwNdKhj+RA==
 ///
 /// stats-me-query: thin CLI wrapper around VictoriaMetrics's HTTP
-/// query endpoints.
+/// query endpoints. See stats-me-victoria-metrics-clients(7) for the
+/// env-var resolution contract and broader VictoriaMetrics-client
+/// guidance.
 ///
 /// Subcommands:
 ///   stats-me-query series [PATTERN]      List metric names. PATTERN is a regex
@@ -11,11 +13,11 @@
 ///   stats-me-query query EXPR            Instant PromQL query at "now".
 ///   stats-me-query range EXPR [SECONDS]  Range query over the last SECONDS (default
 ///                                        300). Step auto-derived as max(15, SECONDS/60).
-///   stats-me-query labels                List label names known to VM.
+///   stats-me-query labels                List label names known to VictoriaMetrics.
 ///
-/// Output is whatever VM returned (JSON), pretty-printed via JSON.stringify.
+/// Output is whatever VictoriaMetrics returned (JSON), pretty-printed via JSON.stringify.
 ///
-/// VM endpoint: $STATS_ME_VICTORIA_METRICS_URL, default http://127.0.0.1:8428
+/// VictoriaMetrics endpoint: $STATS_ME_VICTORIA_METRICS_URL, default http://127.0.0.1:8428
 /// Override per-call via --victoria-metrics-url=URL as the first arg.
 
 import { $ } from "zx";
@@ -23,7 +25,7 @@ import { $ } from "zx";
 // We don't shell out, so silence zx (it would print a banner).
 $.verbose = false;
 
-const DEFAULT_VM_URL = "http://127.0.0.1:8428";
+const DEFAULT_VICTORIA_METRICS_URL = "http://127.0.0.1:8428";
 
 const usage = `Usage:
   stats-me-query [--victoria-metrics-url=URL] series [PATTERN]
@@ -32,7 +34,7 @@ const usage = `Usage:
   stats-me-query [--victoria-metrics-url=URL] range EXPR [SECONDS]
   stats-me-query [--victoria-metrics-url=URL] labels
 
-VM endpoint resolution: --victoria-metrics-url > $STATS_ME_VICTORIA_METRICS_URL > ${DEFAULT_VM_URL}
+VictoriaMetrics endpoint resolution: --victoria-metrics-url > $STATS_ME_VICTORIA_METRICS_URL > ${DEFAULT_VICTORIA_METRICS_URL}
 `;
 
 const die = (msg: string): never => {
@@ -40,12 +42,12 @@ const die = (msg: string): never => {
   process.exit(2);
 };
 
-const parseArgs = (argv: string[]): { vmUrl: string; rest: string[] } => {
-  let vmUrl = process.env.STATS_ME_VICTORIA_METRICS_URL ?? DEFAULT_VM_URL;
+const parseArgs = (argv: string[]): { victoriaMetricsUrl: string; rest: string[] } => {
+  let victoriaMetricsUrl = process.env.STATS_ME_VICTORIA_METRICS_URL ?? DEFAULT_VICTORIA_METRICS_URL;
   const rest: string[] = [];
   for (const arg of argv) {
     if (arg.startsWith("--victoria-metrics-url=")) {
-      vmUrl = arg.slice("--victoria-metrics-url=".length);
+      victoriaMetricsUrl = arg.slice("--victoria-metrics-url=".length);
     } else if (arg === "--help" || arg === "-h") {
       process.stdout.write(usage);
       process.exit(0);
@@ -53,7 +55,7 @@ const parseArgs = (argv: string[]): { vmUrl: string; rest: string[] } => {
       rest.push(arg);
     }
   }
-  return { vmUrl, rest };
+  return { victoriaMetricsUrl, rest };
 };
 
 const get = async (url: string): Promise<unknown> => {
@@ -80,30 +82,30 @@ const printResult = (result: unknown) => {
   process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 };
 
-const cmdSeries = async (vmUrl: string, args: string[]) => {
+const cmdSeries = async (victoriaMetricsUrl: string, args: string[]) => {
   const pattern = args[0] ?? ".*";
-  const url = new URL("/api/v1/series", vmUrl);
+  const url = new URL("/api/v1/series", victoriaMetricsUrl);
   url.searchParams.append("match[]", `{__name__=~${JSON.stringify(pattern)}}`);
   printResult(await get(url.toString()));
 };
 
-const cmdExport = async (vmUrl: string, args: string[]) => {
+const cmdExport = async (victoriaMetricsUrl: string, args: string[]) => {
   const metric = args[0];
   if (!metric) die("export: METRIC_NAME is required");
-  const url = new URL("/api/v1/export", vmUrl);
+  const url = new URL("/api/v1/export", victoriaMetricsUrl);
   url.searchParams.append("match[]", metric);
   printResult(await get(url.toString()));
 };
 
-const cmdQuery = async (vmUrl: string, args: string[]) => {
+const cmdQuery = async (victoriaMetricsUrl: string, args: string[]) => {
   const expr = args[0];
   if (!expr) die("query: EXPR is required");
-  const url = new URL("/api/v1/query", vmUrl);
+  const url = new URL("/api/v1/query", victoriaMetricsUrl);
   url.searchParams.set("query", expr);
   printResult(await get(url.toString()));
 };
 
-const cmdRange = async (vmUrl: string, args: string[]) => {
+const cmdRange = async (victoriaMetricsUrl: string, args: string[]) => {
   const expr = args[0];
   if (!expr) die("range: EXPR is required");
   const seconds = args[1] ? Number.parseInt(args[1], 10) : 300;
@@ -113,7 +115,7 @@ const cmdRange = async (vmUrl: string, args: string[]) => {
   const end = Math.floor(Date.now() / 1000);
   const start = end - seconds;
   const step = Math.max(15, Math.floor(seconds / 60));
-  const url = new URL("/api/v1/query_range", vmUrl);
+  const url = new URL("/api/v1/query_range", victoriaMetricsUrl);
   url.searchParams.set("query", expr);
   url.searchParams.set("start", String(start));
   url.searchParams.set("end", String(end));
@@ -121,20 +123,20 @@ const cmdRange = async (vmUrl: string, args: string[]) => {
   printResult(await get(url.toString()));
 };
 
-const cmdLabels = async (vmUrl: string, _args: string[]) => {
-  const url = new URL("/api/v1/labels", vmUrl);
+const cmdLabels = async (victoriaMetricsUrl: string, _args: string[]) => {
+  const url = new URL("/api/v1/labels", victoriaMetricsUrl);
   printResult(await get(url.toString()));
 };
 
 const main = async () => {
-  const { vmUrl, rest } = parseArgs(process.argv.slice(2));
+  const { victoriaMetricsUrl, rest } = parseArgs(process.argv.slice(2));
   const [subcommand, ...subargs] = rest;
   if (!subcommand) {
     process.stderr.write(usage);
     process.exit(1);
   }
 
-  const handlers: Record<string, (vm: string, args: string[]) => Promise<void>> = {
+  const handlers: Record<string, (victoriaMetricsUrl: string, args: string[]) => Promise<void>> = {
     series: cmdSeries,
     export: cmdExport,
     query: cmdQuery,
@@ -146,7 +148,7 @@ const main = async () => {
   if (!handler) die(`unknown subcommand: ${subcommand}`);
 
   try {
-    await handler(vmUrl, subargs);
+    await handler(victoriaMetricsUrl, subargs);
   } catch (err) {
     die(`${(err as Error).message ?? err}`);
   }

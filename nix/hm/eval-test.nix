@@ -12,7 +12,7 @@
 
 let
   module = import ./stats-me.nix;
-  vmModule = import ./victoriametrics.nix;
+  victoriaMetricsModule = import ./victoriametrics.nix;
 
   # Minimal HM-ish stubs: just enough launchd / systemd options for
   # the modules to evaluate. evalModules rejects mixing `options`,
@@ -52,20 +52,20 @@ let
       ];
     };
 
-  evalConfigWithVm =
+  evalConfigWithVictoriaMetrics =
     extraConfig:
     lib.evalModules {
       modules = [
         stubOptions
         argsModule
         module
-        vmModule
+        victoriaMetricsModule
         extraConfig
       ];
     };
 
-  vmEnabled =
-    (evalConfigWithVm {
+  victoriaMetricsEnabled =
+    (evalConfigWithVictoriaMetrics {
       services.stats-me.enable = true;
       services.stats-me.package = pkgs.hello;
       services.stats-me-victoria-metrics.enable = true;
@@ -106,25 +106,35 @@ in
   statsdPortDefaultExported = enabledDarwin.home.sessionVariables.STATSD_PORT == "8125";
   statsdPortCustomExported = enabledWithExtra.home.sessionVariables.STATSD_PORT == "9125";
 
-  # STATS_ME_VICTORIA_METRICS_URL is only exported when the autowire
-  # is active (VM module imported, enabled, autowire not disabled).
-  vmUrlExportedWhenAutowired =
-    vmEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_URL == "http://127.0.0.1:8428";
-  vmUrlAbsentWhenStandalone =
+  # STATS_ME_VICTORIA_METRICS_* env vars are only exported when the
+  # autowire is active (VictoriaMetrics module imported, enabled,
+  # autowire not disabled).
+  victoriaMetricsUrlExportedWhenAutowired =
+    victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_URL == "http://127.0.0.1:8428";
+  victoriaMetricsGraphiteHostExportedWhenAutowired =
+    victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_GRAPHITE_HOST == "127.0.0.1";
+  victoriaMetricsGraphitePortExportedWhenAutowired =
+    victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_GRAPHITE_PORT == "2003";
+  victoriaMetricsUrlAbsentWhenStandalone =
     !(enabledDarwin.home.sessionVariables ? STATS_ME_VICTORIA_METRICS_URL);
+  victoriaMetricsGraphiteHostAbsentWhenStandalone =
+    !(enabledDarwin.home.sessionVariables ? STATS_ME_VICTORIA_METRICS_GRAPHITE_HOST);
 
   # Aggregate pass/fail.
   pass =
     enabledDarwin.services.stats-me.enable
     && (pkgs.stdenv.isDarwin -> (enabledDarwin.launchd.agents ? stats-me))
     && enabledWithExtra.services.stats-me.extraConfig.graphitePort == 2003
-    && vmEnabled.services.stats-me-victoria-metrics.enable
-    && (pkgs.stdenv.isDarwin -> (vmEnabled.launchd.agents ? stats-me-victoria-metrics))
+    && victoriaMetricsEnabled.services.stats-me-victoria-metrics.enable
+    && (pkgs.stdenv.isDarwin -> (victoriaMetricsEnabled.launchd.agents ? stats-me-victoria-metrics))
     && enabledDarwin.home.sessionVariables.STATSD_HOST == "127.0.0.1"
     && enabledDarwin.home.sessionVariables.STATSD_PORT == "8125"
     && enabledWithExtra.home.sessionVariables.STATSD_PORT == "9125"
-    && vmEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_URL == "http://127.0.0.1:8428"
-    && !(enabledDarwin.home.sessionVariables ? STATS_ME_VICTORIA_METRICS_URL);
+    && victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_URL == "http://127.0.0.1:8428"
+    && victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_GRAPHITE_HOST == "127.0.0.1"
+    && victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_GRAPHITE_PORT == "2003"
+    && !(enabledDarwin.home.sessionVariables ? STATS_ME_VICTORIA_METRICS_URL)
+    && !(enabledDarwin.home.sessionVariables ? STATS_ME_VICTORIA_METRICS_GRAPHITE_HOST);
 
   # Expose the launcher script path so verification can dump its
   # contents and confirm the XDG_LOG_HOME shape. The mkIf wrapper
@@ -136,20 +146,20 @@ in
     in
     builtins.head body.config.ProgramArguments;
 
-  # Same idea, but for the VM launcher.
-  vmLauncher =
+  # Same idea, but for the VictoriaMetrics launcher.
+  victoriaMetricsLauncher =
     let
-      agent = vmEnabled.launchd.agents.stats-me-victoria-metrics;
+      agent = victoriaMetricsEnabled.launchd.agents.stats-me-victoria-metrics;
       body = if agent ? content then agent.content else agent;
     in
     builtins.head body.config.ProgramArguments;
 
   # The autowired stats-me launcher under the both-enabled scenario.
   # Used by verification to confirm the generated config.js inside
-  # the launcher contains `graphiteHost` pointing at VM.
+  # the launcher contains `graphiteHost` pointing at VictoriaMetrics.
   autowiredStatsMeLauncher =
     let
-      agent = vmEnabled.launchd.agents.stats-me;
+      agent = victoriaMetricsEnabled.launchd.agents.stats-me;
       body = if agent ? content then agent.content else agent;
     in
     builtins.head body.config.ProgramArguments;
