@@ -13,6 +13,7 @@
   stdenvNoCC,
   bun,
   makeWrapper,
+  scdoc,
 }:
 
 stdenvNoCC.mkDerivation {
@@ -24,10 +25,14 @@ stdenvNoCC.mkDerivation {
     fileset = lib.fileset.unions [
       ./vendor/statsd
       ./config
+      ./doc
     ];
   };
 
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [
+    makeWrapper
+    scdoc
+  ];
 
   dontConfigure = true;
   dontBuild = true;
@@ -35,9 +40,13 @@ stdenvNoCC.mkDerivation {
   installPhase = ''
     runHook preInstall
 
-    mkdir -p $out/bin $out/share/stats-me
+    mkdir -p $out/bin $out/share/stats-me $out/share/man/man7
     cp -r vendor/statsd $out/share/stats-me/statsd
     cp config/default-config.js $out/share/stats-me/default-config.js
+
+    for f in doc/*.7.scd; do
+      scdoc < "$f" > "$out/share/man/man7/$(basename "$f" .scd)"
+    done
 
     # Use a hand-written wrapper instead of makeWrapper: we need the
     # `cd` into the statsd dir AND argument forwarding, which

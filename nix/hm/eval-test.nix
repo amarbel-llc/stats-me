@@ -27,6 +27,14 @@ let
       type = lib.types.attrs;
       default = { };
     };
+    # Stub for home-manager's `home.sessionVariables`. In a real HM
+    # configuration this is provided by home-manager itself; in the
+    # synthetic eval test we only need somewhere for the module's
+    # writes to land so we can assert against them.
+    options.home.sessionVariables = lib.mkOption {
+      type = lib.types.attrs;
+      default = { };
+    };
   };
 
   argsModule = {
@@ -92,13 +100,22 @@ in
   # extraConfig flows through.
   extraConfigPropagated = enabledWithExtra.services.stats-me.extraConfig.graphitePort == 2003;
 
+  # Client port-discovery env vars land in home.sessionVariables and
+  # track services.stats-me.port (see stats-me-clients(7)).
+  statsdHostExported = enabledDarwin.home.sessionVariables.STATSD_HOST == "127.0.0.1";
+  statsdPortDefaultExported = enabledDarwin.home.sessionVariables.STATSD_PORT == "8125";
+  statsdPortCustomExported = enabledWithExtra.home.sessionVariables.STATSD_PORT == "9125";
+
   # Aggregate pass/fail.
   pass =
     enabledDarwin.services.stats-me.enable
     && (pkgs.stdenv.isDarwin -> (enabledDarwin.launchd.agents ? stats-me))
     && enabledWithExtra.services.stats-me.extraConfig.graphitePort == 2003
     && vmEnabled.services.stats-me-vm.enable
-    && (pkgs.stdenv.isDarwin -> (vmEnabled.launchd.agents ? stats-me-vm));
+    && (pkgs.stdenv.isDarwin -> (vmEnabled.launchd.agents ? stats-me-vm))
+    && enabledDarwin.home.sessionVariables.STATSD_HOST == "127.0.0.1"
+    && enabledDarwin.home.sessionVariables.STATSD_PORT == "8125"
+    && enabledWithExtra.home.sessionVariables.STATSD_PORT == "9125";
 
   # Expose the launcher script path so verification can dump its
   # contents and confirm the XDG_LOG_HOME shape. The mkIf wrapper

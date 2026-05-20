@@ -216,5 +216,16 @@ in
   config = mkIf cfg.enable {
     launchd.agents.stats-me = mkIf pkgs.stdenv.isDarwin darwinAgent;
     systemd.user.services.stats-me = mkIf pkgs.stdenv.isLinux linuxService;
+
+    # Client port-discovery: export the de-facto statsd ecosystem env
+    # vars so client libraries (hot-shots, python-statsd, cadence, ...)
+    # auto-detect the endpoint with no per-app configuration. See
+    # stats-me-clients(7) for the resolution contract; in particular,
+    # STATSD_HOST is always loopback regardless of the daemon's bind
+    # address, since this module ships a per-user statsd.
+    home.sessionVariables = {
+      STATSD_HOST = "127.0.0.1";
+      STATSD_PORT = toString cfg.port;
+    };
   };
 }
