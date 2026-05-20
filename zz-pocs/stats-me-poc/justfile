@@ -1,26 +1,35 @@
-# stats-me POC justfile. All recipes live in the `explore` group.
+# stats-me POC justfile.
 
-default:
-    @just --list
+default: build
 
-# Stage the exploratory go module so `nix build` can see it.
-[group('explore')]
-bootstrap:
-    git -C ../.. add -N zz-pocs/stats-me-poc
+build: build-nix
 
-# Build the POC driver under nix.
-[group('explore')]
-nix-build:
+# Build the POC driver under nix. If you've added new untracked
+# files in this directory, run `just update-gitindex` first so nix
+# can see them.
+[group('build')]
+build-nix:
     rm -f flake.lock
     nix build .#stats-me-exporel
 
+run: run-nix
+
 # Run the POC end-to-end. Exits 0 with PASS, 1 with FAIL.
-[group('explore')]
-run:
+[group('run')]
+run-nix:
     rm -f flake.lock
     nix run .#stats-me-exporel
 
+clean: clean-build
+
 # Wipe build artifacts.
-[group('explore')]
-clean:
+[group('clean')]
+clean-build:
     rm -rf result flake.lock
+
+update: update-gitindex
+
+# Stage the exploratory go module so `nix build` can see it.
+[group('update')]
+update-gitindex:
+    git -C ../.. add -N zz-pocs/stats-me-poc

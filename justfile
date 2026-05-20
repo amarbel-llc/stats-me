@@ -1,28 +1,31 @@
-default:
-    @just --list
+default: build test
 
-# Pre-merge gate. Builds the package and runs flake check (which
-# itself rebuilds the package via the `checks` attr — cheap enough
+build: build-nix
+
+# Build the package via nix.
+[group('build')]
+build-nix:
+    nix build .#default
+
+test: test-flake
+
+# Run flake check (rebuilds package via the `checks` attr — cheap
 # given nix's caching). The POC under zz-pocs/ is intentionally not
 # wired in here per the eng:poc skill.
-[group('check')]
-check:
-    nix build .#default
+[group('test')]
+test-flake:
     nix flake check
 
-# Build the package only.
-[group('check')]
-build:
-    nix build .#default
+run: run-nix
 
 # Run the daemon ad-hoc against the bundled default config. Logs to
 # stdout (no XDG redirection — the wrapper's launcher script lives
 # in the home-manager module, not the package itself).
-[group('explore')]
-run:
+[group('run')]
+run-nix:
     nix run .#default
 
-# Run the proof-of-concept end-to-end. Validates Bun + statsd.
-[group('explore')]
-poc:
-    cd zz-pocs/stats-me-poc && nix run .#stats-me-exporel
+# Run the proof-of-concept end-to-end via cross-justfile delegation.
+[group('run')]
+run-poc:
+    just zz-pocs/stats-me-poc/run-nix
