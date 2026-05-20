@@ -3,6 +3,11 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    # nixpkgs-master is the SHA-pinned anchor that eng's update-nix-
+    # repos recipe cascades. Unused in outputs — the actual build still
+    # consumes `nixpkgs` above (nixos-25.11 release branch). This input
+    # just lets the cascade see and update a pinned ref.
+    nixpkgs-master.url = "github:NixOS/nixpkgs/d233902339c02a9c334e7e593de68855ad26c4cb";
     utils.url = "https://flakehub.com/f/numtide/flake-utils/0.1.102";
     # amarbel-llc/nixpkgs is a flake-as-source-tree input — we want
     # the bun2nix build-support helpers (specifically
