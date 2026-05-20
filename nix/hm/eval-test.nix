@@ -68,8 +68,8 @@ let
     (evalConfigWithVm {
       services.stats-me.enable = true;
       services.stats-me.package = pkgs.hello;
-      services.stats-me-vm.enable = true;
-      services.stats-me-vm.package = pkgs.hello;
+      services.stats-me-victoria-metrics.enable = true;
+      services.stats-me-victoria-metrics.package = pkgs.hello;
     }).config;
 
   enabledDarwin =
@@ -106,16 +106,25 @@ in
   statsdPortDefaultExported = enabledDarwin.home.sessionVariables.STATSD_PORT == "8125";
   statsdPortCustomExported = enabledWithExtra.home.sessionVariables.STATSD_PORT == "9125";
 
+  # STATS_ME_VICTORIA_METRICS_URL is only exported when the autowire
+  # is active (VM module imported, enabled, autowire not disabled).
+  vmUrlExportedWhenAutowired =
+    vmEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_URL == "http://127.0.0.1:8428";
+  vmUrlAbsentWhenStandalone =
+    !(enabledDarwin.home.sessionVariables ? STATS_ME_VICTORIA_METRICS_URL);
+
   # Aggregate pass/fail.
   pass =
     enabledDarwin.services.stats-me.enable
     && (pkgs.stdenv.isDarwin -> (enabledDarwin.launchd.agents ? stats-me))
     && enabledWithExtra.services.stats-me.extraConfig.graphitePort == 2003
-    && vmEnabled.services.stats-me-vm.enable
-    && (pkgs.stdenv.isDarwin -> (vmEnabled.launchd.agents ? stats-me-vm))
+    && vmEnabled.services.stats-me-victoria-metrics.enable
+    && (pkgs.stdenv.isDarwin -> (vmEnabled.launchd.agents ? stats-me-victoria-metrics))
     && enabledDarwin.home.sessionVariables.STATSD_HOST == "127.0.0.1"
     && enabledDarwin.home.sessionVariables.STATSD_PORT == "8125"
-    && enabledWithExtra.home.sessionVariables.STATSD_PORT == "9125";
+    && enabledWithExtra.home.sessionVariables.STATSD_PORT == "9125"
+    && vmEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_URL == "http://127.0.0.1:8428"
+    && !(enabledDarwin.home.sessionVariables ? STATS_ME_VICTORIA_METRICS_URL);
 
   # Expose the launcher script path so verification can dump its
   # contents and confirm the XDG_LOG_HOME shape. The mkIf wrapper
@@ -130,7 +139,7 @@ in
   # Same idea, but for the VM launcher.
   vmLauncher =
     let
-      agent = vmEnabled.launchd.agents.stats-me-vm;
+      agent = vmEnabled.launchd.agents.stats-me-victoria-metrics;
       body = if agent ? content then agent.content else agent;
     in
     builtins.head body.config.ProgramArguments;

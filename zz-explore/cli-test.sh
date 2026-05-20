@@ -56,7 +56,7 @@ for _ in $(seq 1 30); do
 done
 sleep 2
 
-export STATS_ME_VM_URL="http://127.0.0.1:$VM_HTTP_PORT"
+export STATS_ME_VICTORIA_METRICS_URL="http://127.0.0.1:$VM_HTTP_PORT"
 
 echo
 echo "=== stats-me-query labels ==="

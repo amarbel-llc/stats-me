@@ -1,17 +1,17 @@
-# home-manager module for `services.stats-me-vm` — VictoriaMetrics
-# as a personal time-series store for stats-me. Single Go binary,
-# accepts statsd-via-graphite over TCP/UDP on port 2003 by default,
-# stores data natively (no whisper files, no retention-locked-at-
-# creation footgun), exposes PromQL via HTTP `/api/v1/query` on port
-# 8428.
+# home-manager module for `services.stats-me-victoria-metrics` —
+# VictoriaMetrics as a personal time-series store for stats-me.
+# Single Go binary, accepts statsd-via-graphite over TCP/UDP on
+# port 2003 by default, stores data natively (no whisper files, no
+# retention-locked-at-creation footgun), exposes PromQL via HTTP
+# `/api/v1/query` on port 8428.
 #
 # Disabled by default; enable when you want persistence beyond the
 # console-backend log.
 #
 # Like services.stats-me-carbon used to, this module ships its own
-# service name (stats-me-vm) so users who want VM standalone can
-# opt in without dragging stats-me along. The wiring between them
-# lives in stats-me.nix's autowireVictoriaMetrics option.
+# service name (stats-me-victoria-metrics) so users who want VM
+# standalone can opt in without dragging stats-me along. The wiring
+# between them lives in stats-me.nix's autowireVictoriaMetrics option.
 {
   config,
   lib,
@@ -28,7 +28,7 @@ let
     types
     ;
 
-  cfg = config.services.stats-me-vm;
+  cfg = config.services.stats-me-victoria-metrics;
 
   # Resolve runtime paths in the launcher script. systemd's
   # ExecStart and launchd's ProgramArguments don't expand env vars,
@@ -58,7 +58,7 @@ let
       >>"$LOG" 2>&1
   '';
 
-  launcher = pkgs.writeShellScript "stats-me-vm-launch" launcherText;
+  launcher = pkgs.writeShellScript "stats-me-victoria-metrics-launch" launcherText;
 
   darwinAgent = {
     enable = true;
@@ -72,7 +72,7 @@ let
 
   linuxService = {
     Unit = {
-      Description = "stats-me-vm: VictoriaMetrics for stats-me";
+      Description = "stats-me-victoria-metrics: VictoriaMetrics for stats-me";
       Documentation = "https://github.com/amarbel-llc/stats-me";
     };
     Service = {
@@ -86,8 +86,8 @@ let
   };
 in
 {
-  options.services.stats-me-vm = {
-    enable = mkEnableOption "stats-me-vm, VictoriaMetrics for stats-me";
+  options.services.stats-me-victoria-metrics = {
+    enable = mkEnableOption "stats-me-victoria-metrics, VictoriaMetrics for stats-me";
 
     package = mkPackageOption pkgs "victoriametrics" { };
 
@@ -171,7 +171,7 @@ in
   };
 
   config = mkIf cfg.enable {
-    launchd.agents.stats-me-vm = mkIf pkgs.stdenv.isDarwin darwinAgent;
-    systemd.user.services.stats-me-vm = mkIf pkgs.stdenv.isLinux linuxService;
+    launchd.agents.stats-me-victoria-metrics = mkIf pkgs.stdenv.isDarwin darwinAgent;
+    systemd.user.services.stats-me-victoria-metrics = mkIf pkgs.stdenv.isLinux linuxService;
   };
 }

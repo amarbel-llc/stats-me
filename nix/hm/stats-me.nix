@@ -24,19 +24,21 @@ let
   cfg = config.services.stats-me;
 
   # VictoriaMetrics autowire: when the user imports
-  # nix/hm/victoriametrics.nix and turns on services.stats-me-vm,
-  # route stats-me's graphite backend at VM's host:port automatically.
-  # The defensive `(config.services ? stats-me-vm)` guard means
+  # nix/hm/victoriametrics.nix and turns on
+  # services.stats-me-victoria-metrics, route stats-me's graphite
+  # backend at VM's host:port automatically. The defensive
+  # `(config.services ? stats-me-victoria-metrics)` guard means
   # stats-me still evaluates standalone (when only this module is
   # imported) — we only auto-route if the VM module surface is
   # actually present.
   vmAutowireEnabled =
     cfg.autowireVictoriaMetrics
-    && (config.services ? stats-me-vm)
-    && config.services.stats-me-vm.enable;
+    && (config.services ? stats-me-victoria-metrics)
+    && config.services.stats-me-victoria-metrics.enable;
 
-  vmGraphiteHost = if vmAutowireEnabled then config.services.stats-me-vm.host else null;
-  vmGraphitePort = if vmAutowireEnabled then config.services.stats-me-vm.graphitePort else null;
+  vmCfg = config.services.stats-me-victoria-metrics or null;
+  vmGraphiteHost = if vmAutowireEnabled then vmCfg.host else null;
+  vmGraphitePort = if vmAutowireEnabled then vmCfg.graphitePort else null;
 
   # Effective backend list: console always; graphite added when we're
   # autowiring VM AND the user hasn't already opted in via
@@ -143,23 +145,28 @@ in
       type = types.bool;
       default = true;
       description = ''
-        When `true` (default) and `services.stats-me-vm.enable` is
-        also `true`, stats-me automatically:
+        When `true` (default) and
+        `services.stats-me-victoria-metrics.enable` is also `true`,
+        stats-me automatically:
 
           1. Adds `./backends/graphite` to {option}`backends` (if it
              isn't already there).
           2. Sets `graphiteHost` / `graphitePort` in the generated
              config to point at the VM daemon's graphite-listener
              host:port.
+          3. Exports `STATS_ME_VICTORIA_METRICS_URL` via
+             {option}`home.sessionVariables` so client tooling
+             (`stats-me-query`, downstream agents) auto-discovers
+             the local VM HTTP endpoint.
 
         Set to `false` to wire the graphite backend manually via
         {option}`backends` and {option}`extraConfig`. The autowire
         loses to anything in {option}`extraConfig`, so explicit
         overrides always win.
 
-        No effect if `services.stats-me-vm` is not enabled or the
-        VM module is not imported at all — stats-me still works
-        standalone with the console backend.
+        No effect if `services.stats-me-victoria-metrics` is not
+        enabled or the VM module is not imported at all — stats-me
+        still works standalone with the console backend.
       '';
     };
 
@@ -223,9 +230,17 @@ in
     # stats-me-clients(7) for the resolution contract; in particular,
     # STATSD_HOST is always loopback regardless of the daemon's bind
     # address, since this module ships a per-user statsd.
+    #
+    # STATS_ME_VICTORIA_METRICS_URL is exported only when the VM
+    # autowire is active (`vmAutowireEnabled`) — i.e. the VM module
+    # is imported, enabled, and the user hasn't opted out via
+    # autowireVictoriaMetrics = false. That keeps the env var aligned
+    # with where stats-me is actually flushing.
     home.sessionVariables = {
       STATSD_HOST = "127.0.0.1";
       STATSD_PORT = toString cfg.port;
+    } // lib.optionalAttrs vmAutowireEnabled {
+      STATS_ME_VICTORIA_METRICS_URL = "http://${vmCfg.host}:${toString vmCfg.httpPort}";
     };
   };
 }

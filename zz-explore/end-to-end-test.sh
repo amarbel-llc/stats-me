@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end verification for stats-me + stats-me-vm.
+# End-to-end verification for stats-me + stats-me-victoria-metrics.
 #
 # 1. Spin up VictoriaMetrics with -graphiteListenAddr=:12003,
 #    -httpListenAddr=:18428, fresh -storageDataPath

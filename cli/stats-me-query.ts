@@ -15,8 +15,8 @@
 ///
 /// Output is whatever VM returned (JSON), pretty-printed via JSON.stringify.
 ///
-/// VM endpoint: $STATS_ME_VM_URL, default http://127.0.0.1:8428
-/// Override per-call via --vm-url=URL as the first arg.
+/// VM endpoint: $STATS_ME_VICTORIA_METRICS_URL, default http://127.0.0.1:8428
+/// Override per-call via --victoria-metrics-url=URL as the first arg.
 
 import { $ } from "zx";
 
@@ -26,13 +26,13 @@ $.verbose = false;
 const DEFAULT_VM_URL = "http://127.0.0.1:8428";
 
 const usage = `Usage:
-  stats-me-query [--vm-url=URL] series [PATTERN]
-  stats-me-query [--vm-url=URL] export METRIC_NAME
-  stats-me-query [--vm-url=URL] query EXPR
-  stats-me-query [--vm-url=URL] range EXPR [SECONDS]
-  stats-me-query [--vm-url=URL] labels
+  stats-me-query [--victoria-metrics-url=URL] series [PATTERN]
+  stats-me-query [--victoria-metrics-url=URL] export METRIC_NAME
+  stats-me-query [--victoria-metrics-url=URL] query EXPR
+  stats-me-query [--victoria-metrics-url=URL] range EXPR [SECONDS]
+  stats-me-query [--victoria-metrics-url=URL] labels
 
-VM endpoint resolution: --vm-url > $STATS_ME_VM_URL > ${DEFAULT_VM_URL}
+VM endpoint resolution: --victoria-metrics-url > $STATS_ME_VICTORIA_METRICS_URL > ${DEFAULT_VM_URL}
 `;
 
 const die = (msg: string): never => {
@@ -41,11 +41,11 @@ const die = (msg: string): never => {
 };
 
 const parseArgs = (argv: string[]): { vmUrl: string; rest: string[] } => {
-  let vmUrl = process.env.STATS_ME_VM_URL ?? DEFAULT_VM_URL;
+  let vmUrl = process.env.STATS_ME_VICTORIA_METRICS_URL ?? DEFAULT_VM_URL;
   const rest: string[] = [];
   for (const arg of argv) {
-    if (arg.startsWith("--vm-url=")) {
-      vmUrl = arg.slice("--vm-url=".length);
+    if (arg.startsWith("--victoria-metrics-url=")) {
+      vmUrl = arg.slice("--victoria-metrics-url=".length);
     } else if (arg === "--help" || arg === "-h") {
       process.stdout.write(usage);
       process.exit(0);

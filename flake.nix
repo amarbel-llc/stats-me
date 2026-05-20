@@ -21,7 +21,7 @@
   };
 
   outputs =
-    { self, nixpkgs, nixpkgs-amarbel, utils }:
+    { self, nixpkgs, nixpkgs-amarbel, utils, ... }:
     let
       # Home-manager modules are system-independent and exported at
       # the top level so consumers can wire
@@ -30,14 +30,14 @@
       #
       # Two modules live here:
       #   - stats-me: the statsd daemon (always usable on its own)
-      #   - stats-me-vm: optional VictoriaMetrics for persistent
-      #     time-series storage. Disabled by default. When enabled,
-      #     stats-me auto-routes its graphite backend at VM's
+      #   - stats-me-victoria-metrics: optional VictoriaMetrics for
+      #     persistent time-series storage. Disabled by default. When
+      #     enabled, stats-me auto-routes its graphite backend at VM's
       #     graphite-listener address — see autowireVictoriaMetrics
       #     option in stats-me.nix for the wiring rule.
       homeManagerModules = {
         stats-me = import ./nix/hm/stats-me.nix;
-        stats-me-vm = import ./nix/hm/victoriametrics.nix;
+        stats-me-victoria-metrics = import ./nix/hm/victoriametrics.nix;
       };
     in
     {
@@ -82,9 +82,17 @@
                 url = "https://github.com/oven-sh/bun/releases/download/bun-v${version}/bun-darwin-aarch64.zip";
                 hash = "sha256-b1o0Z+2crsR5W/eM1HZQfZ+HDH1XuGyUX8szgSZ3L/w=";
               };
+              "x86_64-darwin" = pkgs.fetchurl {
+                url = "https://github.com/oven-sh/bun/releases/download/bun-v${version}/bun-darwin-x64.zip";
+                hash = "sha256-xP4rkkchiwKV8k6JWq7I/uYudEUmeakCa2fqy9YRooY=";
+              };
               "x86_64-linux" = pkgs.fetchurl {
                 url = "https://github.com/oven-sh/bun/releases/download/bun-v${version}/bun-linux-x64.zip";
                 hash = "sha256-hhG6k1r4hvBabzh0ChUWAybBXl1dB63vlmEwtEk2B+0=";
+              };
+              "aarch64-linux" = pkgs.fetchurl {
+                url = "https://github.com/oven-sh/bun/releases/download/bun-v${version}/bun-linux-aarch64.zip";
+                hash = "sha256-0TlE2hKlPsx0v2pyC9HQTEVVwDjf5CI2U1anvkdpH98=";
               };
             };
           };
@@ -98,10 +106,10 @@
 
         # Bun-runtime zx script wrapping VM's HTTP query endpoints.
         # Default VM URL is http://127.0.0.1:8428 — same as VM's
-        # default httpListenAddr — but $STATS_ME_VM_URL or
-        # --vm-url=URL override that. The HM module sets
-        # STATS_ME_VM_URL automatically when stats-me-vm is enabled
-        # and autowired (TODO: actually do this in stats-me.nix).
+        # default httpListenAddr — but $STATS_ME_VICTORIA_METRICS_URL
+        # or --victoria-metrics-url=URL override that. The HM module
+        # sets STATS_ME_VICTORIA_METRICS_URL automatically when
+        # stats-me-victoria-metrics is enabled and autowired.
         stats-me-query = bun2nix.buildZxScriptFromFile {
           pname = "stats-me-query";
           version = "0.1.0";
