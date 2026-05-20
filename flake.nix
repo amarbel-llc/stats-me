@@ -38,7 +38,7 @@
       #     option in stats-me.nix for the wiring rule.
       homeManagerModules = {
         stats-me = import ./nix/hm/stats-me.nix;
-        stats-me-victoria-metrics = import ./nix/hm/victoriametrics.nix;
+        stats-me-victoria-metrics = import ./nix/hm/victoria-metrics.nix;
       };
     in
     {

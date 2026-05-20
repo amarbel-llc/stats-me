@@ -12,7 +12,7 @@
 
 let
   module = import ./stats-me.nix;
-  victoriaMetricsModule = import ./victoriametrics.nix;
+  victoriaMetricsModule = import ./victoria-metrics.nix;
 
   # Minimal HM-ish stubs: just enough launchd / systemd options for
   # the modules to evaluate. evalModules rejects mixing `options`,

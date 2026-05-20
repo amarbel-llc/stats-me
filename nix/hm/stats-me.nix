@@ -24,7 +24,7 @@ let
   cfg = config.services.stats-me;
 
   # VictoriaMetrics autowire: when the user imports
-  # nix/hm/victoriametrics.nix and turns on
+  # nix/hm/victoria-metrics.nix and turns on
   # services.stats-me-victoria-metrics, route stats-me's graphite
   # backend at VictoriaMetrics's host:port automatically. The defensive
   # `(config.services ? stats-me-victoria-metrics)` guard means

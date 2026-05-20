@@ -28,7 +28,7 @@ clients interact with:
 There is no auth and no library API. Anything that can speak HTTP or
 graphite plaintext is a viable client. For daemon configuration see
 the *services.stats-me-victoria-metrics* options in the home-manager
-module (_nix/hm/victoriametrics.nix_ in the *stats-me* flake).
+module (_nix/hm/victoria-metrics.nix_ in the *stats-me* flake).
 
 This page is the VictoriaMetrics counterpart to *stats-me-clients*(7),
 which documents the UDP/statsd ingestion path (port *8125*). Most

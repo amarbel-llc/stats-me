@@ -40,12 +40,16 @@ stdenvNoCC.mkDerivation {
   installPhase = ''
     runHook preInstall
 
-    mkdir -p $out/bin $out/share/stats-me $out/share/man/man7
+    mkdir -p $out/bin $out/share/stats-me $out/share/man/man1 $out/share/man/man7
     cp -r vendor/statsd $out/share/stats-me/statsd
     cp config/default-config.js $out/share/stats-me/default-config.js
 
-    for f in doc/*.7.scd; do
-      scdoc < "$f" > "$out/share/man/man7/$(basename "$f" .scd)"
+    # Build man pages from scdoc sources. Sections are inferred from
+    # the filename suffix (foo.1.scd → man1/foo.1, bar.7.scd → man7/bar.7).
+    for f in doc/*.scd; do
+      base="$(basename "$f" .scd)"
+      section="''${base##*.}"
+      scdoc < "$f" > "$out/share/man/man''${section}/$base"
     done
 
     # Use a hand-written wrapper instead of makeWrapper: we need the
