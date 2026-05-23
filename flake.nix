@@ -2,26 +2,25 @@
   description = "stats-me: personal statsd as a home-manager module, run under Bun";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    # Main nixpkgs is the amarbel-llc fork — same source as every
+    # other amarbel-llc/* moxin in the eng stack, so stats-me's closure
+    # converges with the rest instead of pulling a parallel toolchain
+    # from the nixos-25.11 channel. The fork's overlays.default applies
+    # automatically; stats-me doesn't use anything the overlay would
+    # conflict with (no Go, no bun2nix wrapper — we callPackage the
+    # bun2nix helper directly from the source tree below). The bun
+    # override later in this file is independent of which nixpkgs is
+    # used.
+    nixpkgs.url = "github:amarbel-llc/nixpkgs";
     # nixpkgs-master is the SHA-pinned anchor that eng's update-nix-
-    # repos recipe cascades. Unused in outputs — the actual build still
-    # consumes `nixpkgs` above (nixos-25.11 release branch). This input
-    # just lets the cascade see and update a pinned ref.
+    # repos recipe cascades. Unused in outputs — left declared so the
+    # cascade can see and update a pinned ref.
     nixpkgs-master.url = "github:NixOS/nixpkgs/d233902339c02a9c334e7e593de68855ad26c4cb";
     utils.url = "https://flakehub.com/f/numtide/flake-utils/0.1.102";
-    # amarbel-llc/nixpkgs is a flake-as-source-tree input — we want
-    # the bun2nix build-support helpers (specifically
-    # buildZxScriptFromFile) for packaging cli/stats-me-query.ts.
-    # We do NOT apply its overlay; instead we callPackage the helper
-    # directly. flake = false because we just need the source files.
-    nixpkgs-amarbel = {
-      url = "github:amarbel-llc/nixpkgs";
-      flake = false;
-    };
   };
 
   outputs =
-    { self, nixpkgs, nixpkgs-amarbel, utils, ... }:
+    { self, nixpkgs, utils, ... }:
     let
       # Home-manager modules are system-independent and exported at
       # the top level so consumers can wire
@@ -49,14 +48,15 @@
       let
         pkgs = import nixpkgs { inherit system; };
 
-        # bun2nix helpers from amarbel-llc/nixpkgs, hand-wired without
-        # the overlay. We callPackage the build-support paths
-        # directly so the rest of pkgs stays untouched.
+        # bun2nix helpers from the source tree of the amarbel-llc fork
+        # (now also the main nixpkgs above). callPackage the build-
+        # support paths directly so we use the exact version pinned
+        # by stats-me's lock rather than whatever the overlay exposes.
         cacheEntryCreator = pkgs.callPackage
-          "${nixpkgs-amarbel}/pkgs/build-support/bun2nix/cache-entry-creator"
+          "${nixpkgs}/pkgs/build-support/bun2nix/cache-entry-creator"
           { };
         bun2nix = pkgs.callPackage
-          "${nixpkgs-amarbel}/pkgs/build-support/bun2nix"
+          "${nixpkgs}/pkgs/build-support/bun2nix"
           {
             inherit cacheEntryCreator;
             bun = bun-pinned;
