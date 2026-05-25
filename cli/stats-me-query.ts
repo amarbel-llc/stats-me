@@ -37,9 +37,22 @@ const usage = `Usage:
 VictoriaMetrics endpoint resolution: --victoria-metrics-url > $STATS_ME_VICTORIA_METRICS_URL > ${DEFAULT_VICTORIA_METRICS_URL}
 `;
 
+class UsageError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UsageError";
+  }
+}
+
+class HelpRequested extends Error {
+  constructor() {
+    super("help requested");
+    this.name = "HelpRequested";
+  }
+}
+
 const die = (msg: string): never => {
-  process.stderr.write(`stats-me-query: ${msg}\n${usage}`);
-  process.exit(2);
+  throw new UsageError(msg);
 };
 
 const parseArgs = (argv: string[]): { victoriaMetricsUrl: string; rest: string[] } => {
@@ -49,8 +62,7 @@ const parseArgs = (argv: string[]): { victoriaMetricsUrl: string; rest: string[]
     if (arg.startsWith("--victoria-metrics-url=")) {
       victoriaMetricsUrl = arg.slice("--victoria-metrics-url=".length);
     } else if (arg === "--help" || arg === "-h") {
-      process.stdout.write(usage);
-      process.exit(0);
+      throw new HelpRequested();
     } else {
       rest.push(arg);
     }
@@ -129,28 +141,35 @@ const cmdLabels = async (victoriaMetricsUrl: string, _args: string[]) => {
 };
 
 const main = async () => {
-  const { victoriaMetricsUrl, rest } = parseArgs(process.argv.slice(2));
-  const [subcommand, ...subargs] = rest;
-  if (!subcommand) {
-    process.stderr.write(usage);
-    process.exit(1);
-  }
-
-  const handlers: Record<string, (victoriaMetricsUrl: string, args: string[]) => Promise<void>> = {
-    series: cmdSeries,
-    export: cmdExport,
-    query: cmdQuery,
-    range: cmdRange,
-    labels: cmdLabels,
-  };
-
-  const handler = handlers[subcommand];
-  if (!handler) die(`unknown subcommand: ${subcommand}`);
-
   try {
+    const { victoriaMetricsUrl, rest } = parseArgs(process.argv.slice(2));
+    const [subcommand, ...subargs] = rest;
+    if (!subcommand) {
+      process.stderr.write(usage);
+      process.exitCode = 1;
+      return;
+    }
+
+    const handlers: Record<string, (victoriaMetricsUrl: string, args: string[]) => Promise<void>> = {
+      series: cmdSeries,
+      export: cmdExport,
+      query: cmdQuery,
+      range: cmdRange,
+      labels: cmdLabels,
+    };
+
+    const handler = handlers[subcommand];
+    if (!handler) die(`unknown subcommand: ${subcommand}`);
+
     await handler(victoriaMetricsUrl, subargs);
   } catch (err) {
-    die(`${(err as Error).message ?? err}`);
+    if (err instanceof HelpRequested) {
+      process.stdout.write(usage);
+      return;
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    process.stderr.write(`stats-me-query: ${message}\n${usage}`);
+    process.exitCode = 2;
   }
 };
 
