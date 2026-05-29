@@ -11,7 +11,7 @@
     # bun2nix helper directly from the source tree below). The bun
     # override later in this file is independent of which nixpkgs is
     # used.
-    nixpkgs.url = "github:amarbel-llc/nixpkgs";
+    nixpkgs.url = "github:amarbel-llc/igloo";
     # nixpkgs-master is the SHA-pinned anchor that eng's update-nix-
     # repos recipe cascades. Unused in outputs — left declared so the
     # cascade can see and update a pinned ref.
