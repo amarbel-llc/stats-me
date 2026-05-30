@@ -11,7 +11,7 @@
     # bun2nix helper directly from the source tree below). The bun
     # override later in this file is independent of which nixpkgs is
     # used.
-    nixpkgs.url = "github:amarbel-llc/igloo";
+    igloo.url = "github:amarbel-llc/igloo";
     # nixpkgs-master is the SHA-pinned anchor that eng's update-nix-
     # repos recipe cascades. Unused in outputs — left declared so the
     # cascade can see and update a pinned ref.
@@ -20,7 +20,7 @@
   };
 
   outputs =
-    { self, nixpkgs, utils, ... }:
+    { self, igloo, utils, ... }:
     let
       # Home-manager modules are system-independent and exported at
       # the top level so consumers can wire
@@ -46,17 +46,17 @@
     // utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = import nixpkgs { inherit system; };
+        pkgs = import igloo { inherit system; };
 
         # bun2nix helpers from the source tree of the amarbel-llc fork
         # (now also the main nixpkgs above). callPackage the build-
         # support paths directly so we use the exact version pinned
         # by stats-me's lock rather than whatever the overlay exposes.
         cacheEntryCreator = pkgs.callPackage
-          "${nixpkgs}/pkgs/build-support/bun2nix/cache-entry-creator"
+          "${igloo}/pkgs/build-support/bun2nix/cache-entry-creator"
           { };
         bun2nix = pkgs.callPackage
-          "${nixpkgs}/pkgs/build-support/bun2nix"
+          "${igloo}/pkgs/build-support/bun2nix"
           {
             inherit cacheEntryCreator;
             bun = bun-pinned;
