@@ -117,20 +117,52 @@
           version = "0.1.0";
           script = ./cli/stats-me-query.ts;
         };
+
+        # Moxy moxin exposing stats-me-query's subcommands as MCP tools
+        # (stats-me.series / .export / .query / .range / .labels). The
+        # tool TOMLs under moxins/stats-me/ invoke `@BIN@/stats-me-query
+        # <subcommand>`; `@BIN@` is baked to this derivation's own bin/
+        # at build time, where stats-me-query is symlinked.
+        #
+        # We hand-roll the derivation rather than use moxy's `mkMoxin`:
+        # mkMoxin isn't exported from moxy's flake (amarbel-llc/moxy#302)
+        # and it assumes helper scripts checked into moxins/<name>/bin/,
+        # whereas our binary (stats-me-query) is a separate derivation.
+        # The `@BIN@` substitution below mirrors mkMoxin's exactly; drop
+        # this in favor of mkMoxin once #302 ships a prebuilt-binary path.
+        stats-me-moxin = pkgs.runCommand "stats-me-moxin" { } ''
+          moxindir="$out/share/moxy/moxins/stats-me"
+          mkdir -p "$moxindir" "$out/bin"
+          cp ${./moxins/stats-me}/*.toml "$moxindir"/
+          ln -s ${stats-me-query}/bin/stats-me-query "$out/bin/stats-me-query"
+          for f in $(grep -rl '@BIN@' "$moxindir"); do
+            substituteInPlace "$f" --replace-fail '@BIN@' "$out/bin"
+          done
+        '';
       in
       {
         packages = {
           default = stats-me;
           stats-me = stats-me;
           stats-me-query = stats-me-query;
+          stats-me-moxin = stats-me-moxin;
           bun = bun-pinned;
         };
 
+        # The shellHook prepends the moxin to MOXIN_PATH so a moxy
+        # process launched from this devshell discovers the stats-me
+        # tools. Prepended (not appended) so it wins on server-name
+        # collisions — see moxin(7) DISCOVERY ("earlier entries
+        # override later ones").
         devShells.default = pkgs.mkShell {
           packages = [
             bun-pinned
             stats-me-query
+            stats-me-moxin
           ];
+          shellHook = ''
+            export MOXIN_PATH="${stats-me-moxin}/share/moxy/moxins''${MOXIN_PATH:+:$MOXIN_PATH}"
+          '';
         };
 
         # Smoke-build check: ensures the package and its bun
@@ -139,6 +171,7 @@
         checks = {
           stats-me = stats-me;
           stats-me-query = stats-me-query;
+          stats-me-moxin = stats-me-moxin;
         };
       }
     );

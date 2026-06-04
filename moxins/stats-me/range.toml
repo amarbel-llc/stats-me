@@ -1,0 +1,26 @@
+schema = 3
+perms-request = "always-allow"
+description = """Run a PromQL range query over the last SECONDS (default 300) against the local \
+stats-me VictoriaMetrics instance. The step is auto-derived as max(15, SECONDS/60) seconds. \
+Backed by VictoriaMetrics /api/v1/query_range."""
+command = "@BIN@/stats-me-query"
+args = ["range"]
+arg-order = ["expr", "seconds"]
+result-type = "text"
+
+[input]
+type = "object"
+required = ["expr"]
+
+[input.properties.expr]
+type = "string"
+description = "PromQL expression to evaluate over the range."
+
+[input.properties.seconds]
+type = "integer"
+description = "Look-back window in seconds, ending at now. Default 300 (5 minutes)."
+
+[annotations]
+read-only-hint = true
+idempotent-hint = true
+open-world-hint = true

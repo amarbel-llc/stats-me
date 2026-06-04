@@ -1,0 +1,16 @@
+schema = 3
+perms-request = "always-allow"
+description = """List all label names known to the local stats-me VictoriaMetrics instance. \
+Backed by VictoriaMetrics /api/v1/labels."""
+command = "@BIN@/stats-me-query"
+args = ["labels"]
+result-type = "text"
+
+[input]
+type = "object"
+required = []
+
+[annotations]
+read-only-hint = true
+idempotent-hint = true
+open-world-hint = true

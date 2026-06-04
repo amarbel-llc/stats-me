@@ -1,0 +1,22 @@
+schema = 3
+perms-request = "always-allow"
+description = """List metric names known to the local stats-me VictoriaMetrics instance. \
+PATTERN is a regex matched against the metric __name__; the default '.*' lists everything. \
+Backed by VictoriaMetrics /api/v1/series."""
+command = "@BIN@/stats-me-query"
+args = ["series"]
+arg-order = ["pattern"]
+result-type = "text"
+
+[input]
+type = "object"
+required = []
+
+[input.properties.pattern]
+type = "string"
+description = "Regex matched against the metric __name__. Default '.*' (all metric names)."
+
+[annotations]
+read-only-hint = true
+idempotent-hint = true
+open-world-hint = true

@@ -1,0 +1,22 @@
+schema = 3
+perms-request = "always-allow"
+description = """Dump raw datapoints for a single metric series via VictoriaMetrics /api/v1/export. \
+Best for sanity-checking that a given metric is actually being collected. \
+Output is line-delimited JSON, one line per series."""
+command = "@BIN@/stats-me-query"
+args = ["export"]
+arg-order = ["metric"]
+result-type = "text"
+
+[input]
+type = "object"
+required = ["metric"]
+
+[input.properties.metric]
+type = "string"
+description = "Exact metric name to export, e.g. 'stats.counters.myapp.requests.count'."
+
+[annotations]
+read-only-hint = true
+idempotent-hint = true
+open-world-hint = true

@@ -1,0 +1,21 @@
+schema = 3
+perms-request = "always-allow"
+description = """Run an instant PromQL query against the local stats-me VictoriaMetrics instance, \
+evaluated at the current time. Backed by VictoriaMetrics /api/v1/query."""
+command = "@BIN@/stats-me-query"
+args = ["query"]
+arg-order = ["expr"]
+result-type = "text"
+
+[input]
+type = "object"
+required = ["expr"]
+
+[input.properties.expr]
+type = "string"
+description = "PromQL expression, e.g. 'sum(rate(stats_counters_myapp_requests_count[5m]))'."
+
+[annotations]
+read-only-hint = true
+idempotent-hint = true
+open-world-hint = true
