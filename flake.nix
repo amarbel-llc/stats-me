@@ -15,7 +15,7 @@
     # nixpkgs-master is the SHA-pinned anchor that eng's update-nix-
     # repos recipe cascades. Unused in outputs — left declared so the
     # cascade can see and update a pinned ref.
-    nixpkgs-master.url = "github:NixOS/nixpkgs/d233902339c02a9c334e7e593de68855ad26c4cb";
+    nixpkgs-master.url = "github:NixOS/nixpkgs/567a49d1913ce81ac6e9582e3553dd90a955875f";
     utils.url = "https://flakehub.com/f/numtide/flake-utils/0.1.102";
   };
 
