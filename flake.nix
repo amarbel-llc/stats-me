@@ -11,12 +11,14 @@
     # bun2nix helper directly from the source tree below). The bun
     # override later in this file is independent of which nixpkgs is
     # used.
-    igloo.url = "github:amarbel-llc/igloo";
+    igloo.url = "https://code.linenisgreat.com/igloo/archive/master.tar.gz";
     # nixpkgs-master is the SHA-pinned anchor that eng's update-nix-
     # repos recipe cascades. Unused in outputs — left declared so the
     # cascade can see and update a pinned ref.
     nixpkgs-master.url = "github:NixOS/nixpkgs/567a49d1913ce81ac6e9582e3553dd90a955875f";
     utils.url = "https://flakehub.com/f/numtide/flake-utils/0.1.102";
+    utils.inputs.systems.follows = "igloo/systems";
+    igloo.inputs.nixpkgs-master.follows = "nixpkgs-master";
   };
 
   outputs =
