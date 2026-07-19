@@ -19,10 +19,27 @@
     utils.url = "https://flakehub.com/f/numtide/flake-utils/0.1.102";
     utils.inputs.systems.follows = "igloo/systems";
     igloo.inputs.nixpkgs-master.follows = "nixpkgs-master";
+
+    # conformist provides the linter/formatter multiplexer, its Nix module
+    # library (conformist.lib), and the eng-convention presets. Consumed from
+    # the forge (linenisgreat/conformist) via the tarball form, matching igloo
+    # above.
+    conformist = {
+      url = "https://code.linenisgreat.com/conformist/archive/master.tar.gz";
+      inputs.igloo.follows = "igloo";
+      inputs.nixpkgs-master.follows = "nixpkgs-master";
+      inputs.utils.follows = "utils";
+    };
   };
 
   outputs =
-    { self, igloo, utils, ... }:
+    {
+      self,
+      igloo,
+      utils,
+      conformist,
+      ...
+    }:
     let
       # Home-manager modules are system-independent and exported at
       # the top level so consumers can wire
@@ -50,19 +67,38 @@
       let
         pkgs = import igloo { inherit system; };
 
+        conformistPkg = conformist.packages.${system}.default;
+
+        # Pure lane: the eng preset + this repo's own formatters/excludes
+        # (./conformist.nix). Drives `nix fmt` and the sandboxed
+        # `checks.formatting`. No presets.eng-go — see ./conformist.nix's
+        # header for why the zz-pocs/ Go POC doesn't warrant it.
+        conformistEval = conformist.lib.evalModule pkgs {
+          imports = [
+            conformist.lib.presets.eng
+            ./conformist.nix
+          ];
+          package = conformistPkg;
+        };
+
+        # Impure lane: the git-state checks (git-remotes, sweatfile,
+        # agents-md, gomod2nix) run against the working tree via `just
+        # lint-worktree`, where .git is available.
+        conformistImpureEval = conformist.lib.evalModule pkgs {
+          imports = [ conformist.lib.presets.eng-impure ];
+          package = conformistPkg;
+          projectRootFile = "flake.nix";
+        };
+
         # bun2nix helpers from the source tree of the amarbel-llc fork
         # (now also the main nixpkgs above). callPackage the build-
         # support paths directly so we use the exact version pinned
         # by stats-me's lock rather than whatever the overlay exposes.
-        cacheEntryCreator = pkgs.callPackage
-          "${igloo}/pkgs/build-support/bun2nix/cache-entry-creator"
-          { };
-        bun2nix = pkgs.callPackage
-          "${igloo}/pkgs/build-support/bun2nix"
-          {
-            inherit cacheEntryCreator;
-            bun = bun-pinned;
-          };
+        cacheEntryCreator = pkgs.callPackage "${igloo}/pkgs/build-support/bun2nix/cache-entry-creator" { };
+        bun2nix = pkgs.callPackage "${igloo}/pkgs/build-support/bun2nix" {
+          inherit cacheEntryCreator;
+          bun = bun-pinned;
+        };
 
         # Bun pinned to an upstream release. nixos-25.11 ships
         # bun-1.3.3, which silently drops the first UDP packet after
@@ -99,8 +135,7 @@
               };
             };
           };
-          src = passthru.sources.${system}
-            or (throw "stats-me bun pin: unsupported system ${system}");
+          src = passthru.sources.${system} or (throw "stats-me bun pin: unsupported system ${system}");
         });
 
         stats-me = pkgs.callPackage ./default.nix {
@@ -149,7 +184,17 @@
           stats-me-query = stats-me-query;
           stats-me-moxin = stats-me-moxin;
           bun = bun-pinned;
+          # The generated config for the impure lane's `just lint-worktree`.
+          conformist-impure-config = conformistImpureEval.config.build.configFile;
+          # The config-specific, toolchain-hermetic pre-commit/repair
+          # wrappers (conformist#47/#51/#54), on the devShell PATH.
+          conformist-pre-commit = conformistEval.config.build.preCommit;
+          conformist-repair = conformistEval.config.build.repair;
         };
+
+        # `nix fmt` runs conformist wrapped with the generated config
+        # (conformistEval above).
+        formatter = conformistEval.config.build.wrapper;
 
         # The shellHook prepends the moxin to MOXIN_PATH so a moxy
         # process launched from this devshell discovers the stats-me
@@ -161,6 +206,10 @@
             bun-pinned
             stats-me-query
             stats-me-moxin
+            conformistPkg
+            conformistEval.config.build.preCommit
+            conformistEval.config.build.repair
+            pkgs.just
           ];
           shellHook = ''
             export MOXIN_PATH="${stats-me-moxin}/share/moxy/moxins''${MOXIN_PATH:+:$MOXIN_PATH}"
@@ -170,10 +219,14 @@
         # Smoke-build check: ensures the package and its bun
         # dependency continue to build. The HM module's eval is
         # validated separately by `nix flake check` consumers.
+        # `formatting` is the sandboxed read-only conformist gate
+        # (conformist.nix + presets.eng), gated by `just lint-fmt` and
+        # `nix flake check`.
         checks = {
           stats-me = stats-me;
           stats-me-query = stats-me-query;
           stats-me-moxin = stats-me-moxin;
+          formatting = conformistEval.config.build.check self;
         };
       }
     );

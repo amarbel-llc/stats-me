@@ -33,6 +33,29 @@
         "type": "github"
       }
     },
+    "conformist": {
+      "inputs": {
+        "igloo": [
+          "igloo"
+        ],
+        "nixpkgs-master": [
+          "nixpkgs-master"
+        ],
+        "utils": [
+          "utils"
+        ]
+      },
+      "locked": {
+        "lastModified": 1784457838,
+        "narHash": "sha256-bMJxK6VNTRhc9a2OYL49cG2+DH8NQ4YCN4+SrMjvj9g=",
+        "type": "tarball",
+        "url": "https://code.linenisgreat.com/conformist/archive/be54c5befacbbc6fe35f2cabc7bc418593b6238d.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://code.linenisgreat.com/conformist/archive/master.tar.gz"
+      }
+    },
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": [
@@ -93,6 +116,7 @@
     },
     "root": {
       "inputs": {
+        "conformist": "conformist",
         "igloo": "igloo",
         "nixpkgs-master": "nixpkgs-master",
         "utils": "utils"
