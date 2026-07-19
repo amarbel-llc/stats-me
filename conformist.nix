@@ -19,11 +19,9 @@
 
   # eng-versioning(7) would otherwise derive the key from a root-level
   # go.mod / Cargo.toml; stats-me has neither at the tree root (only
-  # zz-pocs/stats-me-poc/go.mod, which is excluded below). No version.env
-  # exists yet either — the repo is pre-implementation (README.md
-  # "Status") — so the eng-versioning check's includes = [ "version.env" ]
-  # currently matches nothing and the check never runs. Set the key
-  # explicitly anyway so it's already correct the day version.env is added.
+  # zz-pocs/stats-me-poc/go.mod, which is excluded below). Set the key
+  # explicitly; version.env now exists (export STATS_ME_VERSION=<sem>) and
+  # the check runs against it.
   linters.eng-versioning.key = "STATS_ME_VERSION";
 
   settings.excludes = [

@@ -67,6 +67,16 @@
       let
         pkgs = import igloo { inherit system; };
 
+        # Single source of truth: version.env (eng-versioning(7)), an
+        # `export STATS_ME_VERSION=<sem>` file at repo root. stats-me and
+        # stats-me-query share this one version across every derivation
+        # below (neither is built via igloo's buildGoApplication, so
+        # nothing auto-reads version.env — the flake reads it explicitly
+        # at eval time with the spec's single-line match).
+        statsMeVersion = builtins.head (
+          builtins.match ".*STATS_ME_VERSION=([^\n]+).*" (builtins.readFile ./version.env)
+        );
+
         conformistPkg = conformist.packages.${system}.default;
 
         # Pure lane: the eng preset + this repo's own formatters/excludes
@@ -140,6 +150,7 @@
 
         stats-me = pkgs.callPackage ./default.nix {
           bun = bun-pinned;
+          version = statsMeVersion;
         };
 
         # Bun-runtime zx script wrapping VictoriaMetrics's HTTP query
@@ -151,7 +162,7 @@
         # stats-me-victoria-metrics is enabled and autowired.
         stats-me-query = bun2nix.buildZxScriptFromFile {
           pname = "stats-me-query";
-          version = "0.1.0";
+          version = statsMeVersion;
           script = ./cli/stats-me-query.ts;
         };
 

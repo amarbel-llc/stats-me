@@ -14,11 +14,17 @@
   bun,
   makeWrapper,
   scdoc,
+  # Single source of truth: version.env (eng-versioning(7)), an
+  # `export STATS_ME_VERSION=<sem>` file at repo root. default.nix is a
+  # plain stdenvNoCC.mkDerivation (no buildGoApplication auto-read), so
+  # the flake reads version.env at eval time and passes the value in here
+  # rather than default.nix hardcoding or re-reading it itself.
+  version,
 }:
 
 stdenvNoCC.mkDerivation {
   pname = "stats-me";
-  version = "0.1.0";
+  inherit version;
 
   src = lib.fileset.toSource {
     root = ./.;
