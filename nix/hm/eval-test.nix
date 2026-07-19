@@ -94,8 +94,7 @@ in
   evalsWithDefaults = enabledDarwin.services.stats-me.enable == true;
 
   # On darwin, launchd.agents.stats-me is populated.
-  darwinAgentDefined =
-    pkgs.stdenv.isDarwin -> (enabledDarwin.launchd.agents ? stats-me);
+  darwinAgentDefined = pkgs.stdenv.isDarwin -> (enabledDarwin.launchd.agents ? stats-me);
 
   # extraConfig flows through.
   extraConfigPropagated = enabledWithExtra.services.stats-me.extraConfig.graphitePort == 2003;
@@ -110,7 +109,8 @@ in
   # autowire is active (VictoriaMetrics module imported, enabled,
   # autowire not disabled).
   victoriaMetricsUrlExportedWhenAutowired =
-    victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_URL == "http://127.0.0.1:8428";
+    victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_URL
+    == "http://127.0.0.1:8428";
   victoriaMetricsGraphiteHostExportedWhenAutowired =
     victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_GRAPHITE_HOST == "127.0.0.1";
   victoriaMetricsGraphitePortExportedWhenAutowired =
@@ -130,8 +130,11 @@ in
     && enabledDarwin.home.sessionVariables.STATSD_HOST == "127.0.0.1"
     && enabledDarwin.home.sessionVariables.STATSD_PORT == "8125"
     && enabledWithExtra.home.sessionVariables.STATSD_PORT == "9125"
-    && victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_URL == "http://127.0.0.1:8428"
-    && victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_GRAPHITE_HOST == "127.0.0.1"
+    &&
+      victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_URL
+      == "http://127.0.0.1:8428"
+    &&
+      victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_GRAPHITE_HOST == "127.0.0.1"
     && victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_GRAPHITE_PORT == "2003"
     && !(enabledDarwin.home.sessionVariables ? STATS_ME_VICTORIA_METRICS_URL)
     && !(enabledDarwin.home.sessionVariables ? STATS_ME_VICTORIA_METRICS_GRAPHITE_HOST);

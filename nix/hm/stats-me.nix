@@ -37,8 +37,10 @@ let
     && config.services.stats-me-victoria-metrics.enable;
 
   victoriaMetricsCfg = config.services.stats-me-victoria-metrics or null;
-  victoriaMetricsGraphiteHost = if victoriaMetricsAutowireEnabled then victoriaMetricsCfg.host else null;
-  victoriaMetricsGraphitePort = if victoriaMetricsAutowireEnabled then victoriaMetricsCfg.graphitePort else null;
+  victoriaMetricsGraphiteHost =
+    if victoriaMetricsAutowireEnabled then victoriaMetricsCfg.host else null;
+  victoriaMetricsGraphitePort =
+    if victoriaMetricsAutowireEnabled then victoriaMetricsCfg.graphitePort else null;
 
   # Effective backend list: console always; graphite added when we're
   # autowiring VictoriaMetrics AND the user hasn't already opted in via
@@ -46,9 +48,14 @@ let
   # backends list is paths relative to the statsd dir.
   effectiveBackends =
     let
-      hasGraphite = builtins.any (b: b == "./backends/graphite" || b == "./backends/graphite.js") cfg.backends;
+      hasGraphite = builtins.any (
+        b: b == "./backends/graphite" || b == "./backends/graphite.js"
+      ) cfg.backends;
     in
-    if victoriaMetricsAutowireEnabled && !hasGraphite then cfg.backends ++ [ "./backends/graphite" ] else cfg.backends;
+    if victoriaMetricsAutowireEnabled && !hasGraphite then
+      cfg.backends ++ [ "./backends/graphite" ]
+    else
+      cfg.backends;
 
   # Build the JS config blob. statsd's lib/config.js evals the file as
   # `config = <data>`, so the file body must be a bare JS expression.
@@ -61,14 +68,13 @@ let
         graphiteHost = victoriaMetricsGraphiteHost;
         graphitePort = victoriaMetricsGraphitePort;
       };
-      merged =
-        {
-          port = cfg.port;
-          flushInterval = cfg.flushInterval;
-          backends = effectiveBackends;
-        }
-        // autowired
-        // cfg.extraConfig;  # explicit user values still win
+      merged = {
+        port = cfg.port;
+        flushInterval = cfg.flushInterval;
+        backends = effectiveBackends;
+      }
+      // autowired
+      // cfg.extraConfig; # explicit user values still win
     in
     pkgs.writeText "stats-me-config.js" (builtins.toJSON merged);
 
@@ -249,7 +255,8 @@ in
     home.sessionVariables = {
       STATSD_HOST = "127.0.0.1";
       STATSD_PORT = toString cfg.port;
-    } // lib.optionalAttrs victoriaMetricsAutowireEnabled {
+    }
+    // lib.optionalAttrs victoriaMetricsAutowireEnabled {
       STATS_ME_VICTORIA_METRICS_URL = "http://${victoriaMetricsCfg.host}:${toString victoriaMetricsCfg.httpPort}";
       STATS_ME_VICTORIA_METRICS_GRAPHITE_HOST = victoriaMetricsCfg.host;
       STATS_ME_VICTORIA_METRICS_GRAPHITE_PORT = toString victoriaMetricsCfg.graphitePort;
