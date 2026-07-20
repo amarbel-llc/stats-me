@@ -110,7 +110,7 @@ let
   linuxService = {
     Unit = {
       Description = "stats-me: personal statsd";
-      Documentation = "https://github.com/amarbel-llc/stats-me";
+      Documentation = "https://code.linenisgreat.com/stats-me";
     };
     Service = {
       ExecStart = "${launcher}";

@@ -75,7 +75,7 @@ stdenvNoCC.mkDerivation {
 
   meta = {
     description = "stats-me: personal statsd, run under Bun";
-    homepage = "https://github.com/amarbel-llc/stats-me";
+    homepage = "https://code.linenisgreat.com/stats-me";
     license = lib.licenses.mit;
     mainProgram = "stats-me";
     platforms = lib.platforms.darwin ++ lib.platforms.linux;
