@@ -4,6 +4,8 @@ lint: lint-fmt
 
 # Read-only formatting + the eng preset's file-based linters, via the
 # sandboxed checks.formatting derivation.
+#
+# check formatting and the eng file-based lints, read-only
 [group('lint')]
 lint-fmt:
     #!/usr/bin/env bash
@@ -16,6 +18,8 @@ lint-impure: lint-worktree
 # The impure eng checks (git remotes, sweatfile, agents-md) against the
 # working tree, where .git is available. Runs conformist from the devShell
 # (direnv `use flake`).
+#
+# run the impure eng checks against the working tree
 [group('lint')]
 lint-worktree:
     #!/usr/bin/env bash
@@ -35,6 +39,8 @@ test: test-flake
 # Run flake check (rebuilds package via the `checks` attr — cheap
 # given nix's caching). The POC under zz-pocs/ is intentionally not
 # wired in here per the eng:poc skill.
+#
+# run nix flake check
 [group('test')]
 test-flake:
     nix flake check
@@ -44,6 +50,8 @@ run: run-nix
 # Run the daemon ad-hoc against the bundled default config. Logs to
 # stdout (no XDG redirection — the wrapper's launcher script lives
 # in the home-manager module, not the package itself).
+#
+# run the daemon ad-hoc against the bundled default config
 [group('run')]
 run-nix:
     nix run .#default
