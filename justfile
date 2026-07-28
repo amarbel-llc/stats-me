@@ -29,7 +29,7 @@ lint-worktree:
 
 build: build-nix
 
-# Build the package via nix.
+# build the package via nix
 [group('build')]
 build-nix:
     nix build .#default
@@ -56,14 +56,14 @@ run: run-nix
 run-nix:
     nix run .#default
 
-# Run the proof-of-concept end-to-end via cross-justfile delegation.
+# run the proof-of-concept end-to-end via cross-justfile delegation
 [group('run')]
 run-poc:
     just zz-pocs/stats-me-poc/run-nix
 
 codemod: codemod-fmt
 
-# Format the tree in place (repair mode) via `nix fmt`.
+# format the tree in place (repair mode) via `nix fmt`
 [group('codemod')]
 codemod-fmt:
     nix fmt
