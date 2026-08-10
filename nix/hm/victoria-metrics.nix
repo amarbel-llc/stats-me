@@ -5,8 +5,10 @@
 # retention-locked-at-creation footgun), exposes PromQL via HTTP
 # `/api/v1/query` on port 8428.
 #
-# Disabled by default; enable when you want persistence beyond the
-# console-backend log.
+# Disabled by default; enable it to get durable, queryable metrics
+# storage. Without it (and with the console backend off by default —
+# see stats-me.nix issue #9), stats-me accepts metrics but does not
+# persist them anywhere.
 #
 # Like services.stats-me-carbon used to, this module ships its own
 # service name (stats-me-victoria-metrics) so users who want VictoriaMetrics

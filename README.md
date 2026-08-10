@@ -13,10 +13,13 @@ flake, package, and home-manager module are not yet built.
 
 A drop-in module for `~/eng`-style nix configurations that exposes
 `services.stats-me`, runs a statsd daemon under launchd (macOS) or
-systemd (Linux), defaults to the console backend with logs at the
-XDG-spec path (`$XDG_LOG_HOME/stats-me/stats-me.log`,
-defaulting to `$HOME/.local/log/stats-me/stats-me.log`), and lets the
-user point at any pluggable backend later.
+systemd (Linux) with logs at the XDG-spec path
+(`$XDG_LOG_HOME/stats-me/stats-me.log`, defaulting to
+`$HOME/.local/log/stats-me/stats-me.log`) and capped at 50 MiB by
+default, and lets the user point at any pluggable backend. The
+per-flush console backend is off by default (`console.enable`) since it
+grew the log unbounded; durable metrics go to VictoriaMetrics via the
+graphite backend.
 
 ## POC findings
 

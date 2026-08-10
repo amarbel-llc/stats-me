@@ -88,6 +88,32 @@ let
         graphitePort = 2003;
       };
     }).config;
+
+  # stats-me with the console backend explicitly opted back in
+  # (console.enable = true). Used to confirm the opt-in path still
+  # wires the console backend after issue #9 made it off-by-default.
+  consoleEnabled =
+    (evalConfig {
+      services.stats-me.enable = true;
+      services.stats-me.package = pkgs.hello;
+      services.stats-me.console.enable = true;
+    }).config;
+
+  # Extract the launcher store path from an evaluated module config,
+  # regardless of platform: launchd carries it in ProgramArguments on
+  # Darwin, systemd in Service.ExecStart on Linux. `nix flake check`
+  # runs on whichever platform the gate host is (Linux on the eng
+  # fleet), so the extraction must not assume Darwin. The `.content`
+  # unwrap handles the mkIf wrapper the stub `types.attrs` options
+  # leave in place (a real home-manager submodule resolves it, the
+  # loose stub does not).
+  resolveMkIf = v: if v ? content then v.content else v;
+  launcherPathOf =
+    evaluated: serviceName:
+    if pkgs.stdenv.isDarwin then
+      builtins.head (resolveMkIf evaluated.launchd.agents.${serviceName}).config.ProgramArguments
+    else
+      (resolveMkIf evaluated.systemd.user.services.${serviceName}).Service.ExecStart;
 in
 {
   # The module does not crash when enabled with defaults.
@@ -120,6 +146,19 @@ in
   victoriaMetricsGraphiteHostAbsentWhenStandalone =
     !(enabledDarwin.home.sessionVariables ? STATS_ME_VICTORIA_METRICS_GRAPHITE_HOST);
 
+  # Issue #9 prong 1: the console backend is off by default, so a
+  # standalone stats-me writes an empty backend list (no per-flush dump
+  # into the unbounded log). It is opt-in via console.enable, and the
+  # VictoriaMetrics autowire routes graphite WITHOUT re-introducing
+  # console.
+  standaloneConsoleOff = enabledDarwin.services.stats-me.effectiveBackends == [ ];
+  consoleOptInWorks = consoleEnabled.services.stats-me.effectiveBackends == [ "./backends/console" ];
+  autowireDropsConsole =
+    victoriaMetricsEnabled.services.stats-me.effectiveBackends == [ "./backends/graphite" ];
+
+  # Issue #9 prong 2: the launcher log-size guard is on by default.
+  maxLogSizeDefaulted = enabledDarwin.services.stats-me.maxLogSize == 50 * 1024 * 1024;
+
   # Aggregate pass/fail.
   pass =
     enabledDarwin.services.stats-me.enable
@@ -137,33 +176,17 @@ in
       victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_GRAPHITE_HOST == "127.0.0.1"
     && victoriaMetricsEnabled.home.sessionVariables.STATS_ME_VICTORIA_METRICS_GRAPHITE_PORT == "2003"
     && !(enabledDarwin.home.sessionVariables ? STATS_ME_VICTORIA_METRICS_URL)
-    && !(enabledDarwin.home.sessionVariables ? STATS_ME_VICTORIA_METRICS_GRAPHITE_HOST);
+    && !(enabledDarwin.home.sessionVariables ? STATS_ME_VICTORIA_METRICS_GRAPHITE_HOST)
+    && enabledDarwin.services.stats-me.effectiveBackends == [ ]
+    && consoleEnabled.services.stats-me.effectiveBackends == [ "./backends/console" ]
+    && victoriaMetricsEnabled.services.stats-me.effectiveBackends == [ "./backends/graphite" ]
+    && enabledDarwin.services.stats-me.maxLogSize == 50 * 1024 * 1024;
 
-  # Expose the launcher script path so verification can dump its
-  # contents and confirm the XDG_LOG_HOME shape. The mkIf wrapper
-  # leaves the agent body under `.content` (loose attrs merge).
-  launcher =
-    let
-      agent = enabledDarwin.launchd.agents.stats-me;
-      body = if agent ? content then agent.content else agent;
-    in
-    builtins.head body.config.ProgramArguments;
-
-  # Same idea, but for the VictoriaMetrics launcher.
-  victoriaMetricsLauncher =
-    let
-      agent = victoriaMetricsEnabled.launchd.agents.stats-me-victoria-metrics;
-      body = if agent ? content then agent.content else agent;
-    in
-    builtins.head body.config.ProgramArguments;
-
-  # The autowired stats-me launcher under the both-enabled scenario.
-  # Used by verification to confirm the generated config.js inside
-  # the launcher contains `graphiteHost` pointing at VictoriaMetrics.
-  autowiredStatsMeLauncher =
-    let
-      agent = victoriaMetricsEnabled.launchd.agents.stats-me;
-      body = if agent ? content then agent.content else agent;
-    in
-    builtins.head body.config.ProgramArguments;
+  # Launcher script store paths for verification (dump contents,
+  # confirm the XDG_LOG_HOME shape, grep for the issue-#9 size guard,
+  # confirm the generated config's backend list). Platform-agnostic —
+  # see launcherPathOf above.
+  launcher = launcherPathOf enabledDarwin "stats-me";
+  victoriaMetricsLauncher = launcherPathOf victoriaMetricsEnabled "stats-me-victoria-metrics";
+  autowiredStatsMeLauncher = launcherPathOf victoriaMetricsEnabled "stats-me";
 }

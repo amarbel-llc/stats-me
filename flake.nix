@@ -187,6 +187,12 @@
             substituteInPlace "$f" --replace-fail '@BIN@' "$out/bin"
           done
         '';
+
+        # Synthetic eval of the HM modules (nix/hm/eval-test.nix). Drives
+        # the checks.hm-eval gate below: forces the pure-eval option
+        # assertions and exposes the generated launcher store paths so
+        # the check can grep the deployed artifacts.
+        hmEval = import ./nix/hm/eval-test.nix { inherit pkgs; };
       in
       {
         packages = {
@@ -238,6 +244,49 @@
           stats-me-query = stats-me-query;
           stats-me-moxin = stats-me-moxin;
           formatting = conformistEval.config.build.check self;
+
+          # Gates the HM modules' eval-test (nix/hm/eval-test.nix), which
+          # was previously run only by ad-hoc `nix-instantiate`. Forcing
+          # `hmEval.pass` here runs the pure-eval option assertions, and
+          # the builder greps the generated launcher + config for the
+          # issue-#9 fixes: the maxLogSize size guard must be present, and
+          # the default (console-off) config must NOT load the console
+          # backend whose per-flush dump grew the log unbounded.
+          hm-eval =
+            pkgs.runCommand "stats-me-hm-eval"
+              {
+                inherit (hmEval) launcher;
+                passClaim =
+                  if hmEval.pass then
+                    "ok"
+                  else
+                    throw "stats-me HM module eval-test assertions failed (see nix/hm/eval-test.nix)";
+              }
+              ''
+                echo "eval-test pass: $passClaim"
+
+                # Prong 2: the default launcher must carry the maxLogSize
+                # truncate guard so a chatty backend can't refill the disk
+                # between restarts.
+                if ! grep -q 'wc -c' "$launcher"; then
+                  echo "FAIL: default launcher is missing the maxLogSize size guard (issue #9)" >&2
+                  exit 1
+                fi
+
+                # Prong 1: the default (standalone, console.enable unset)
+                # generated config must NOT pull in the console backend.
+                cfg=$(grep -oE '/nix/store/[^ ]*-stats-me-config\.js' "$launcher" | head -n1)
+                if [ -z "$cfg" ]; then
+                  echo "FAIL: could not locate the generated config path in the launcher" >&2
+                  exit 1
+                fi
+                if grep -q 'backends/console' "$cfg"; then
+                  echo "FAIL: console backend present in the default generated config (issue #9)" >&2
+                  exit 1
+                fi
+
+                touch "$out"
+              '';
         };
       }
     );
