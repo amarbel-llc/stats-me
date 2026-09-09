@@ -13,6 +13,42 @@ lint-fmt:
     system=$(nix eval --raw --impure --expr 'builtins.currentSystem')
     nix build ".#checks.${system}.formatting" --no-link --print-build-logs
 
+# Lint the rendered man pages (built by default.nix from doc/*.scd):
+# each page's NAME entry must be exactly one physical roff line that
+# lexgrog parses, with a description of at most 72 characters. spinclass
+# renders only the first roff line of NAME into its sysprompt index, so
+# a hand-wrapped NAME paragraph shows up there truncated (fleet rule:
+# doppelgang lint-man). Requires lexgrog (man-db) on PATH.
+#
+# check man page NAME lines are single-line, <= 72 chars, lexgrog-parseable
+[group('lint')]
+lint-man:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    out=$(nix build --no-link --print-out-paths .#default)
+    status=0
+    for page in "$out"/share/man/man*/*; do
+        # fixupPhase gzips the pages; zcat -f also passes plain files through.
+        lines=$(zcat -f "$page" | awk '/^\.SH NAME/{inname=1; next} /^\.SH/{inname=0} inname && !/^\./{n++} END{print n+0}')
+        if [ "$lines" -ne 1 ]; then
+            echo "FAIL: $(basename "$page"): NAME spans $lines physical lines (want 1)" >&2
+            status=1
+        fi
+        if ! whatis=$(lexgrog "$page"); then
+            echo "FAIL: $(basename "$page"): lexgrog cannot parse NAME" >&2
+            status=1
+            continue
+        fi
+        desc=${whatis#* - }
+        desc=${desc%\"}
+        if [ -z "$desc" ] || [ "${#desc}" -gt 72 ]; then
+            echo "FAIL: $(basename "$page"): description is ${#desc} chars (want 1..72): $desc" >&2
+            status=1
+        fi
+        echo "$whatis"
+    done
+    exit "$status"
+
 lint-impure: lint-worktree
 
 # The impure eng checks (git remotes, sweatfile, agents-md) against the

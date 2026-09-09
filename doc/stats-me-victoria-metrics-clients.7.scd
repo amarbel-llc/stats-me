@@ -2,8 +2,7 @@ stats-me-victoria-metrics-clients(7)
 
 # NAME
 
-stats-me-victoria-metrics-clients - querying and pushing to a
-stats-me-managed VictoriaMetrics
+stats-me-victoria-metrics-clients - querying and pushing to a stats-me-managed VictoriaMetrics
 
 # DESCRIPTION
 
