@@ -173,7 +173,7 @@ in
   };
 
   config = mkIf cfg.enable {
-    launchd.agents.stats-me-victoria-metrics = mkIf pkgs.stdenv.isDarwin darwinAgent;
-    systemd.user.services.stats-me-victoria-metrics = mkIf pkgs.stdenv.isLinux linuxService;
+    launchd.agents.stats-me-victoria-metrics = mkIf pkgs.stdenv.hostPlatform.isDarwin darwinAgent;
+    systemd.user.services.stats-me-victoria-metrics = mkIf pkgs.stdenv.hostPlatform.isLinux linuxService;
   };
 }

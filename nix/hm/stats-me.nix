@@ -296,8 +296,8 @@ in
   };
 
   config = mkIf cfg.enable {
-    launchd.agents.stats-me = mkIf pkgs.stdenv.isDarwin darwinAgent;
-    systemd.user.services.stats-me = mkIf pkgs.stdenv.isLinux linuxService;
+    launchd.agents.stats-me = mkIf pkgs.stdenv.hostPlatform.isDarwin darwinAgent;
+    systemd.user.services.stats-me = mkIf pkgs.stdenv.hostPlatform.isLinux linuxService;
 
     # Client port-discovery: export the de-facto statsd ecosystem env
     # vars so client libraries (hot-shots, python-statsd, cadence, ...)

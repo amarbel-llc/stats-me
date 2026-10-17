@@ -110,7 +110,7 @@ let
   resolveMkIf = v: if v ? content then v.content else v;
   launcherPathOf =
     evaluated: serviceName:
-    if pkgs.stdenv.isDarwin then
+    if pkgs.stdenv.hostPlatform.isDarwin then
       builtins.head (resolveMkIf evaluated.launchd.agents.${serviceName}).config.ProgramArguments
     else
       (resolveMkIf evaluated.systemd.user.services.${serviceName}).Service.ExecStart;
@@ -120,7 +120,7 @@ in
   evalsWithDefaults = enabledDarwin.services.stats-me.enable == true;
 
   # On darwin, launchd.agents.stats-me is populated.
-  darwinAgentDefined = pkgs.stdenv.isDarwin -> (enabledDarwin.launchd.agents ? stats-me);
+  darwinAgentDefined = pkgs.stdenv.hostPlatform.isDarwin -> (enabledDarwin.launchd.agents ? stats-me);
 
   # extraConfig flows through.
   extraConfigPropagated = enabledWithExtra.services.stats-me.extraConfig.graphitePort == 2003;
@@ -162,10 +162,13 @@ in
   # Aggregate pass/fail.
   pass =
     enabledDarwin.services.stats-me.enable
-    && (pkgs.stdenv.isDarwin -> (enabledDarwin.launchd.agents ? stats-me))
+    && (pkgs.stdenv.hostPlatform.isDarwin -> (enabledDarwin.launchd.agents ? stats-me))
     && enabledWithExtra.services.stats-me.extraConfig.graphitePort == 2003
     && victoriaMetricsEnabled.services.stats-me-victoria-metrics.enable
-    && (pkgs.stdenv.isDarwin -> (victoriaMetricsEnabled.launchd.agents ? stats-me-victoria-metrics))
+    && (
+      pkgs.stdenv.hostPlatform.isDarwin
+      -> (victoriaMetricsEnabled.launchd.agents ? stats-me-victoria-metrics)
+    )
     && enabledDarwin.home.sessionVariables.STATSD_HOST == "127.0.0.1"
     && enabledDarwin.home.sessionVariables.STATSD_PORT == "8125"
     && enabledWithExtra.home.sessionVariables.STATSD_PORT == "9125"
